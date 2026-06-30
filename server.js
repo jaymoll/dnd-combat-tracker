@@ -34,6 +34,11 @@ const normalizeEntry = (entry, type, index) => {
   const name = String(entry.name ?? "").trim();
   const maxHp = clampNumber(entry.maxHp, 1);
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
+  const armorClass = clampNumber(entry.armorClass ?? 10, 1);
+  const toHit = clampNumber(entry.toHit ?? 0, -99);
+  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
+  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
+  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
 
   if (!name) return null;
 
@@ -43,6 +48,11 @@ const normalizeEntry = (entry, type, index) => {
     type,
     maxHp,
     currentHp,
+    armorClass,
+    toHit,
+    damageMin,
+    damageMax,
+    damageBonus,
   };
 };
 
@@ -72,6 +82,11 @@ const writeLibraryType = async (type, entries) => {
     name: entry.name,
     maxHp: entry.maxHp,
     currentHp: entry.currentHp,
+    armorClass: entry.armorClass,
+    toHit: entry.toHit,
+    damageMin: entry.damageMin,
+    damageMax: entry.damageMax,
+    damageBonus: entry.damageBonus,
   }));
   await writeFile(getStoragePath(type), `${JSON.stringify(cleanEntries, null, 2)}\n`, "utf8");
 };
@@ -110,6 +125,36 @@ app.post("/api/library/:type", async (request, response, next) => {
 
     await writeLibraryType(type, [...existing, entry]);
     response.status(201).json(await readLibrary());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/library/:type/:id", async (request, response, next) => {
+  try {
+    const { type, id } = request.params;
+    if (!(type in libraryFiles)) {
+      response.status(404).json({ error: "Unknown library type" });
+      return;
+    }
+
+    const existing = await readLibraryType(type);
+    const entry = normalizeEntry({ ...request.body, id }, type, existing.length);
+    if (!entry) {
+      response.status(400).json({ error: "A name is required" });
+      return;
+    }
+
+    const index = existing.findIndex((item) => item.id === id);
+    if (index === -1) {
+      response.status(404).json({ error: "Entry not found" });
+      return;
+    }
+
+    const updatedEntries = [...existing];
+    updatedEntries[index] = entry;
+    await writeLibraryType(type, updatedEntries);
+    response.json(await readLibrary());
   } catch (error) {
     next(error);
   }

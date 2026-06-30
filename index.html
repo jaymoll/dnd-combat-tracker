@@ -28,45 +28,8 @@
 
         <div class="tracker-main">
           <section class="control-band" aria-label="Encounter controls">
-            <form id="combatantForm" class="combatant-form">
-              <input type="hidden" id="combatantId" />
-
-              <label>
-                <span>Name</span>
-                <input id="nameInput" type="text" autocomplete="off" required />
-              </label>
-
-              <label>
-                <span>Type</span>
-                <select id="typeInput">
-                  <option value="character">Character</option>
-                  <option value="monster">Monster</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Max HP</span>
-                <input id="maxHpInput" type="number" min="1" step="1" required />
-              </label>
-
-              <label>
-                <span>Current HP</span>
-                <input id="currentHpInput" type="number" min="0" step="1" required />
-              </label>
-
-              <label>
-                <span>Initiative</span>
-                <input id="initiativeInput" type="number" step="1" required />
-              </label>
-
-              <div class="form-actions">
-                <button class="primary-action" type="submit" id="saveCombatantButton">Add</button>
-                <button type="button" id="saveQuickAccessButton">Save to Quick Access</button>
-                <button type="button" id="cancelEditButton" hidden>Cancel</button>
-              </div>
-            </form>
-
             <div class="encounter-actions">
+              <button class="primary-action" type="button" id="openCombatantModalButton">Add Creature</button>
               <button class="start-action" type="button" id="startEncounterButton">Start Encounter</button>
               <button type="button" id="resetEncounterButton">Reset</button>
               <p id="startRequirement" class="hint"></p>
@@ -91,8 +54,10 @@
               </label>
 
               <button class="danger-action" type="submit">Apply Damage</button>
+              <button class="start-action" type="button" id="rollAttackButton">Roll Attack</button>
               <button type="button" id="nextTurnButton">Next Turn</button>
             </form>
+            <p class="roll-result" id="rollResult" aria-live="polite"></p>
           </section>
 
           <section class="list-band" aria-labelledby="combatants-title">
@@ -108,8 +73,10 @@
                     <th scope="col">#</th>
                     <th scope="col">Name</th>
                     <th scope="col">Type</th>
+                    <th scope="col">AC</th>
                     <th scope="col">HP</th>
                     <th scope="col">Initiative</th>
+                    <th scope="col">Attack</th>
                     <th scope="col">Damage Done</th>
                     <th scope="col">Status</th>
                     <th scope="col" class="setup-column">Actions</th>
@@ -132,6 +99,78 @@
         </aside>
       </div>
     </main>
+
+    <dialog class="creature-modal" id="combatantModal" aria-labelledby="combatantModalTitle">
+      <form id="combatantForm" class="combatant-form">
+        <div class="modal-heading">
+          <h2 id="combatantModalTitle">Add Creature</h2>
+          <button class="icon-button" type="button" id="closeCombatantModalButton" aria-label="Close creature form">x</button>
+        </div>
+
+        <input type="hidden" id="combatantId" />
+
+        <label>
+          <span>Name</span>
+          <input id="nameInput" type="text" autocomplete="off" required />
+        </label>
+
+        <label>
+          <span>Type</span>
+          <select id="typeInput">
+            <option value="character">Character</option>
+            <option value="monster">Monster</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Max HP</span>
+          <input id="maxHpInput" type="number" min="1" step="1" required />
+        </label>
+
+        <label>
+          <span>Current HP</span>
+          <input id="currentHpInput" type="number" min="0" step="1" required />
+        </label>
+
+        <label>
+          <span>Initiative</span>
+          <input id="initiativeInput" type="number" step="1" required />
+        </label>
+
+        <label>
+          <span>AC</span>
+          <input id="armorClassInput" type="number" min="1" step="1" required />
+        </label>
+
+        <div class="monster-fields" id="monsterFields">
+          <label>
+            <span>To Hit</span>
+            <input id="toHitInput" type="number" step="1" />
+          </label>
+
+          <label>
+            <span>Dmg Min</span>
+            <input id="damageMinInput" type="number" min="0" step="1" />
+          </label>
+
+          <label>
+            <span>Dmg Max</span>
+            <input id="damageMaxInput" type="number" min="0" step="1" />
+          </label>
+
+          <label>
+            <span>Dmg Bonus</span>
+            <input id="damageBonusInput" type="number" step="1" />
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button class="primary-action" type="submit" id="saveCombatantButton">Add</button>
+          <button type="button" id="saveQuickAccessButton">Save to Quick Access</button>
+          <button type="button" id="cancelEditButton">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="app.js"></script>
   </body>

@@ -20,6 +20,11 @@ const normalizeQuickAccessEntry = (entry, type) => {
   const name = String(entry.name ?? "").trim();
   const maxHp = clampNumber(entry.maxHp, 1);
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
+  const armorClass = clampNumber(entry.armorClass ?? 10, 1);
+  const toHit = clampNumber(entry.toHit ?? 0, -99);
+  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
+  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
+  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
 
   if (!name) return null;
 
@@ -29,13 +34,24 @@ const normalizeQuickAccessEntry = (entry, type) => {
     type,
     maxHp,
     currentHp,
+    armorClass,
+    toHit,
+    damageMin,
+    damageMax,
+    damageBonus,
   };
 };
 
 let state = createInitialState();
 let quickAccess = createInitialQuickAccess();
+let formMode = "encounter";
+let libraryEditTarget = null;
 
 const elements = {
+  modal: document.querySelector("#combatantModal"),
+  modalTitle: document.querySelector("#combatantModalTitle"),
+  openModalButton: document.querySelector("#openCombatantModalButton"),
+  closeModalButton: document.querySelector("#closeCombatantModalButton"),
   form: document.querySelector("#combatantForm"),
   combatantId: document.querySelector("#combatantId"),
   name: document.querySelector("#nameInput"),
@@ -43,6 +59,12 @@ const elements = {
   maxHp: document.querySelector("#maxHpInput"),
   currentHp: document.querySelector("#currentHpInput"),
   initiative: document.querySelector("#initiativeInput"),
+  armorClass: document.querySelector("#armorClassInput"),
+  monsterFields: document.querySelector("#monsterFields"),
+  toHit: document.querySelector("#toHitInput"),
+  damageMin: document.querySelector("#damageMinInput"),
+  damageMax: document.querySelector("#damageMaxInput"),
+  damageBonus: document.querySelector("#damageBonusInput"),
   saveButton: document.querySelector("#saveCombatantButton"),
   saveQuickAccessButton: document.querySelector("#saveQuickAccessButton"),
   cancelEditButton: document.querySelector("#cancelEditButton"),
@@ -55,6 +77,8 @@ const elements = {
   damageForm: document.querySelector("#damageForm"),
   target: document.querySelector("#targetInput"),
   damage: document.querySelector("#damageInput"),
+  rollAttackButton: document.querySelector("#rollAttackButton"),
+  rollResult: document.querySelector("#rollResult"),
   nextTurnButton: document.querySelector("#nextTurnButton"),
   rows: document.querySelector("#combatantRows"),
   count: document.querySelector("#combatantCount"),
@@ -84,6 +108,8 @@ const parseInteger = (value, fallback = 0) => {
   return Number.isNaN(number) ? fallback : number;
 };
 
+const rollInclusive = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (character) => {
     const entities = {
@@ -103,7 +129,51 @@ const createQuickAccessEntry = (formCombatant) => ({
   type: formCombatant.type,
   maxHp: formCombatant.maxHp,
   currentHp: formCombatant.currentHp,
+  armorClass: formCombatant.armorClass,
+  toHit: formCombatant.toHit,
+  damageMin: formCombatant.damageMin,
+  damageMax: formCombatant.damageMax,
+  damageBonus: formCombatant.damageBonus,
 });
+
+const formatModifier = (value) => (value >= 0 ? `+${value}` : String(value));
+
+const getDamageText = (combatant) => {
+  if (combatant.type !== "monster") return "-";
+  const bonus = combatant.damageBonus === 0 ? "" : ` ${formatModifier(combatant.damageBonus)}`;
+  return `${formatModifier(combatant.toHit)} hit, ${combatant.damageMin}-${combatant.damageMax}${bonus}`;
+};
+
+const syncMonsterFields = () => {
+  const isMonster = elements.type.value === "monster";
+  elements.monsterFields.hidden = !isMonster;
+  if (isMonster) {
+    if (!elements.toHit.value) elements.toHit.value = "0";
+    if (!elements.damageMin.value) elements.damageMin.value = "1";
+    if (!elements.damageMax.value) elements.damageMax.value = elements.damageMin.value;
+    if (!elements.damageBonus.value) elements.damageBonus.value = "0";
+    elements.damageMax.min = elements.damageMin.value;
+  }
+  [elements.toHit, elements.damageMin, elements.damageMax, elements.damageBonus].forEach((input) => {
+    input.disabled = !isMonster;
+    input.required = isMonster;
+  });
+};
+
+const openCombatantModal = (mode = "add") => {
+  elements.modalTitle.textContent = mode === "library" ? "Edit Saved Creature" : mode === "edit" ? "Edit Creature" : "Add Creature";
+  elements.saveButton.textContent = mode === "add" ? "Add" : "Save";
+  elements.saveQuickAccessButton.hidden = mode === "library";
+  renderFormState();
+  elements.modal.showModal();
+  elements.name.focus();
+};
+
+const closeCombatantModal = () => {
+  if (elements.modal.open) {
+    elements.modal.close();
+  }
+};
 
 const requestJson = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -137,6 +207,10 @@ const loadQuickAccess = async () => {
 const readCombatantForm = () => {
   const maxHp = clampNumber(elements.maxHp.value, 1);
   const currentHp = clampNumber(elements.currentHp.value, 0, maxHp);
+  const armorClass = clampNumber(elements.armorClass.value, 1);
+  const isMonster = elements.type.value === "monster";
+  const damageMin = isMonster ? clampNumber(elements.damageMin.value, 0) : 0;
+  const damageMax = isMonster ? clampNumber(elements.damageMax.value, damageMin, Number.MAX_SAFE_INTEGER) : 0;
   const name = elements.name.value.trim();
 
   if (!name) return null;
@@ -147,6 +221,11 @@ const readCombatantForm = () => {
     maxHp,
     currentHp,
     initiative: parseInteger(elements.initiative.value),
+    armorClass,
+    toHit: isMonster ? parseInteger(elements.toHit.value) : 0,
+    damageMin,
+    damageMax,
+    damageBonus: isMonster ? parseInteger(elements.damageBonus.value) : 0,
   };
 };
 
@@ -194,19 +273,37 @@ const checkEncounterEnd = () => {
   }
 };
 
+const damageCombatant = (attacker, target, requestedDamage) => {
+  const actualDamage = Math.min(requestedDamage, target.currentHp);
+  target.currentHp -= actualDamage;
+  target.isDefeated = target.currentHp === 0;
+  attacker.damageDone += actualDamage;
+  return actualDamage;
+};
+
 const resetForm = () => {
+  formMode = "encounter";
+  libraryEditTarget = null;
   elements.form.reset();
   elements.combatantId.value = "";
   elements.type.value = "character";
   elements.saveButton.textContent = "Add";
-  elements.cancelEditButton.hidden = true;
   elements.currentHp.removeAttribute("max");
   elements.maxHp.value = "";
   elements.currentHp.value = "";
   elements.initiative.value = "";
+  elements.armorClass.value = "";
+  elements.toHit.value = "";
+  elements.damageMin.value = "";
+  elements.damageMax.value = "";
+  elements.damageBonus.value = "";
+  elements.saveQuickAccessButton.hidden = false;
+  syncMonsterFields();
 };
 
 const fillForm = (combatant) => {
+  formMode = "encounter";
+  libraryEditTarget = null;
   elements.combatantId.value = combatant.id;
   elements.name.value = combatant.name;
   elements.type.value = combatant.type;
@@ -214,9 +311,32 @@ const fillForm = (combatant) => {
   elements.currentHp.value = combatant.currentHp;
   elements.currentHp.max = combatant.maxHp;
   elements.initiative.value = combatant.initiative;
-  elements.saveButton.textContent = "Save";
-  elements.cancelEditButton.hidden = false;
-  elements.name.focus();
+  elements.armorClass.value = combatant.armorClass;
+  elements.toHit.value = combatant.toHit;
+  elements.damageMin.value = combatant.damageMin;
+  elements.damageMax.value = combatant.damageMax;
+  elements.damageBonus.value = combatant.damageBonus;
+  syncMonsterFields();
+  openCombatantModal("edit");
+};
+
+const fillLibraryForm = (entry, type) => {
+  formMode = "library";
+  libraryEditTarget = { id: entry.id, type };
+  elements.combatantId.value = entry.id;
+  elements.name.value = entry.name;
+  elements.type.value = entry.type;
+  elements.maxHp.value = entry.maxHp;
+  elements.currentHp.value = entry.currentHp;
+  elements.currentHp.max = entry.maxHp;
+  elements.initiative.value = "0";
+  elements.armorClass.value = entry.armorClass;
+  elements.toHit.value = entry.toHit;
+  elements.damageMin.value = entry.damageMin;
+  elements.damageMax.value = entry.damageMax;
+  elements.damageBonus.value = entry.damageBonus;
+  syncMonsterFields();
+  openCombatantModal("library");
 };
 
 const renderStatus = () => {
@@ -237,12 +357,19 @@ const renderStatus = () => {
 const renderFormState = () => {
   const setupDisabled = state.hasStarted;
   elements.name.disabled = setupDisabled;
-  elements.type.disabled = setupDisabled;
+  elements.type.disabled = setupDisabled || formMode === "library";
   elements.maxHp.disabled = setupDisabled;
   elements.currentHp.disabled = setupDisabled;
-  elements.initiative.disabled = setupDisabled;
+  elements.initiative.disabled = setupDisabled || formMode === "library";
+  elements.armorClass.disabled = setupDisabled;
+  elements.toHit.disabled = setupDisabled || elements.type.value !== "monster";
+  elements.damageMin.disabled = setupDisabled || elements.type.value !== "monster";
+  elements.damageMax.disabled = setupDisabled || elements.type.value !== "monster";
+  elements.damageBonus.disabled = setupDisabled || elements.type.value !== "monster";
+  elements.openModalButton.disabled = setupDisabled;
   elements.saveButton.disabled = setupDisabled;
   elements.saveQuickAccessButton.disabled = setupDisabled;
+  elements.saveQuickAccessButton.hidden = formMode === "library";
   elements.cancelEditButton.disabled = setupDisabled;
 
   const canStart = !state.hasStarted && hasRequiredSides();
@@ -261,10 +388,12 @@ const renderQuickAccessList = (type, listElement, emptyElement) => {
       (item) => `<article class="quick-item">
         <div>
           <strong>${escapeHtml(item.name)}</strong>
-          <span>${item.currentHp}/${item.maxHp} HP</span>
+          <span>${item.currentHp}/${item.maxHp} HP, AC ${item.armorClass}</span>
+          ${item.type === "monster" ? `<span>${escapeHtml(getDamageText(item))}</span>` : ""}
         </div>
         <div class="quick-actions">
           <button type="button" data-action="add-quick" data-type="${type}" data-id="${item.id}" ${state.hasStarted ? "disabled" : ""}>Add</button>
+          <button type="button" data-action="edit-quick" data-type="${type}" data-id="${item.id}" ${state.hasStarted ? "disabled" : ""}>Edit</button>
           <button type="button" data-action="remove-quick" data-type="${type}" data-id="${item.id}" ${state.hasStarted ? "disabled" : ""}>Remove</button>
         </div>
       </article>`,
@@ -283,6 +412,7 @@ const renderTurnPanel = () => {
   if (!activeCombatantCanAct()) {
     elements.activeName.textContent = "";
     elements.target.innerHTML = "";
+    elements.rollResult.textContent = "";
     return;
   }
 
@@ -295,10 +425,11 @@ const renderTurnPanel = () => {
   elements.target.innerHTML = targets
     .map(
       (combatant) =>
-        `<option value="${combatant.id}">${escapeHtml(combatant.name)} (${combatant.currentHp}/${combatant.maxHp} HP)</option>`,
+        `<option value="${combatant.id}">${escapeHtml(combatant.name)} (AC ${combatant.armorClass}, ${combatant.currentHp}/${combatant.maxHp} HP)</option>`,
     )
     .join("");
   elements.damageForm.querySelector("button[type='submit']").disabled = targets.length === 0;
+  elements.rollAttackButton.disabled = targets.length === 0 || active.type !== "monster";
   elements.nextTurnButton.disabled = targets.length === 0 && sortedCombatants().filter((combatant) => !combatant.isDefeated).length < 2;
 };
 
@@ -328,8 +459,10 @@ const renderRows = () => {
         <td>${index + 1}</td>
         <td class="name-cell">${escapeHtml(combatant.name)}</td>
         <td><span class="type-pill type-${combatant.type}">${combatant.type}</span></td>
+        <td>${combatant.armorClass}</td>
         <td>${combatant.currentHp} / ${combatant.maxHp}</td>
         <td>${combatant.initiative}</td>
+        <td>${escapeHtml(getDamageText(combatant))}</td>
         <td>${combatant.damageDone}</td>
         <td><span class="status-pill status-${status.toLowerCase()}">${status}</span></td>
         <td class="setup-column">${actionButtons}</td>
@@ -359,6 +492,11 @@ const upsertCombatant = (event) => {
   const formCombatant = readCombatantForm();
   if (!formCombatant) return;
 
+  if (formMode === "library") {
+    updateQuickAccessEntry(formCombatant);
+    return;
+  }
+
   const id = elements.combatantId.value;
   const existing = state.combatants.find((combatant) => combatant.id === id);
 
@@ -378,7 +516,25 @@ const upsertCombatant = (event) => {
   }
 
   resetForm();
+  closeCombatantModal();
   render();
+};
+
+const updateQuickAccessEntry = async (formCombatant) => {
+  if (!libraryEditTarget) return;
+
+  try {
+    quickAccess = await requestJson(`${libraryApiPath}/${libraryEditTarget.type}/${encodeURIComponent(libraryEditTarget.id)}`, {
+      method: "PUT",
+      body: JSON.stringify(createQuickAccessEntry(formCombatant)),
+    });
+    elements.storageStatus.textContent = "Server storage connected";
+    resetForm();
+    closeCombatantModal();
+    render();
+  } catch {
+    elements.storageStatus.textContent = "Save failed";
+  }
 };
 
 const addCombatantFromQuickAccess = (entry) => {
@@ -392,6 +548,11 @@ const addCombatantFromQuickAccess = (entry) => {
     maxHp: entry.maxHp,
     currentHp: entry.currentHp,
     initiative: parseInteger(initiative),
+    armorClass: entry.armorClass,
+    toHit: entry.toHit,
+    damageMin: entry.damageMin,
+    damageMax: entry.damageMax,
+    damageBonus: entry.damageBonus,
     damageDone: 0,
     isDefeated: entry.currentHp === 0,
     order: state.nextOrder,
@@ -417,6 +578,7 @@ const saveFormToQuickAccess = async () => {
       body: JSON.stringify(createQuickAccessEntry(formCombatant)),
     });
     elements.storageStatus.textContent = "Server storage connected";
+    closeCombatantModal();
     render();
   } catch {
     elements.storageStatus.textContent = "Save failed";
@@ -445,16 +607,38 @@ const applyDamage = (event) => {
   const target = state.combatants.find((combatant) => combatant.id === elements.target.value);
   if (!target || target.isDefeated) return;
 
-  const requestedDamage = clampNumber(elements.damage.value, 1);
-  const actualDamage = Math.min(requestedDamage, target.currentHp);
-
-  target.currentHp -= actualDamage;
-  target.isDefeated = target.currentHp === 0;
-
   const attacker = state.combatants.find((combatant) => combatant.id === active.id);
-  attacker.damageDone += actualDamage;
+  const requestedDamage = clampNumber(elements.damage.value, 1);
+  const actualDamage = damageCombatant(attacker, target, requestedDamage);
 
   elements.damage.value = "";
+  elements.rollResult.textContent = `${active.name} dealt ${actualDamage} damage to ${target.name}.`;
+  checkEncounterEnd();
+  render();
+};
+
+const rollAttack = () => {
+  if (!activeCombatantCanAct()) return;
+
+  const active = getActiveCombatant();
+  const attacker = state.combatants.find((combatant) => combatant.id === active.id);
+  const target = state.combatants.find((combatant) => combatant.id === elements.target.value);
+  if (!attacker || attacker.type !== "monster" || !target || target.isDefeated) return;
+
+  const d20 = rollInclusive(1, 20);
+  const attackTotal = d20 + attacker.toHit;
+
+  if (attackTotal < target.armorClass) {
+    elements.rollResult.textContent = `${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, missing ${target.name}'s AC ${target.armorClass}.`;
+    render();
+    return;
+  }
+
+  const damageRoll = rollInclusive(attacker.damageMin, attacker.damageMax);
+  const requestedDamage = Math.max(0, damageRoll + attacker.damageBonus);
+  const actualDamage = damageCombatant(attacker, target, requestedDamage);
+  elements.rollResult.textContent = `${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, hit AC ${target.armorClass}, and dealt ${actualDamage} damage (${damageRoll} ${formatModifier(attacker.damageBonus)}).`;
+
   checkEncounterEnd();
   render();
 };
@@ -466,12 +650,37 @@ const nextTurn = () => {
 };
 
 elements.form.addEventListener("submit", upsertCombatant);
+elements.openModalButton.addEventListener("click", () => {
+  resetForm();
+  openCombatantModal("add");
+});
+elements.closeModalButton.addEventListener("click", () => {
+  resetForm();
+  closeCombatantModal();
+});
 elements.saveQuickAccessButton.addEventListener("click", saveFormToQuickAccess);
-elements.cancelEditButton.addEventListener("click", resetForm);
+elements.cancelEditButton.addEventListener("click", () => {
+  resetForm();
+  closeCombatantModal();
+});
 elements.startButton.addEventListener("click", startEncounter);
 elements.resetButton.addEventListener("click", resetEncounter);
 elements.damageForm.addEventListener("submit", applyDamage);
+elements.rollAttackButton.addEventListener("click", rollAttack);
 elements.nextTurnButton.addEventListener("click", nextTurn);
+elements.type.addEventListener("change", () => {
+  syncMonsterFields();
+  renderFormState();
+});
+elements.modal.addEventListener("cancel", () => {
+  resetForm();
+});
+elements.modal.addEventListener("click", (event) => {
+  if (event.target === elements.modal) {
+    resetForm();
+    closeCombatantModal();
+  }
+});
 
 elements.rows.addEventListener("click", (event) => {
   const button = event.target.closest("button");
@@ -504,6 +713,10 @@ const handleQuickAccessClick = (event) => {
     addCombatantFromQuickAccess(entry);
   }
 
+  if (action === "edit-quick") {
+    fillLibraryForm(entry, type);
+  }
+
   if (action === "remove-quick") {
     requestJson(`${libraryApiPath}/${type}/${encodeURIComponent(id)}`, { method: "DELETE" })
       .then((updatedQuickAccess) => {
@@ -528,5 +741,14 @@ elements.maxHp.addEventListener("input", () => {
   }
 });
 
+elements.damageMin.addEventListener("input", () => {
+  const minDamage = clampNumber(elements.damageMin.value, 0);
+  elements.damageMax.min = minDamage;
+  if (elements.damageMax.value && Number(elements.damageMax.value) < minDamage) {
+    elements.damageMax.value = minDamage;
+  }
+});
+
+syncMonsterFields();
 render();
 loadQuickAccess();

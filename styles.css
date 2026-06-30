@@ -149,12 +149,57 @@ h2 {
   border-radius: 8px 8px 0 0;
 }
 
-.combatant-form,
 .damage-form {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(130px, 0.8fr) repeat(3, minmax(78px, 0.35fr)) auto;
+  grid-template-columns: minmax(220px, 2fr) minmax(130px, 0.8fr) repeat(8, minmax(74px, 0.32fr)) auto;
   gap: 12px;
   align-items: end;
+}
+
+.combatant-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(130px, 0.8fr) repeat(4, minmax(82px, 0.45fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.creature-modal {
+  width: min(920px, calc(100% - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  padding: 20px;
+}
+
+.creature-modal::backdrop {
+  background: rgba(34, 31, 28, 0.46);
+}
+
+.modal-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 2px;
+}
+
+.icon-button {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+}
+
+.monster-fields {
+  display: contents;
+}
+
+.monster-fields[hidden] {
+  display: none;
 }
 
 label {
@@ -189,6 +234,11 @@ button:focus-visible {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.combatant-form .form-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
 }
 
 .compact-heading {
@@ -252,7 +302,6 @@ button:focus-visible {
 }
 
 .encounter-actions {
-  margin-top: 16px;
   justify-content: space-between;
 }
 
@@ -311,7 +360,14 @@ button:focus-visible {
 }
 
 .damage-form {
-  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.45fr) auto auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.45fr) auto auto auto;
+}
+
+.roll-result {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-weight: 750;
 }
 
 .list-band {
@@ -476,6 +532,12 @@ tr.defeated-row {
   .damage-form,
   .turn-band {
     grid-template-columns: 1fr;
+  }
+
+  .creature-modal {
+    width: calc(100% - 20px);
+    max-height: calc(100vh - 20px);
+    padding: 16px;
   }
 
   .form-actions,
