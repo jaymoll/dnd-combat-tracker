@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D&D Combat Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="top-bar" aria-labelledby="app-title">
+        <div>
+          <p class="eyebrow">Tabletop encounter</p>
+          <h1 id="app-title">D&D Combat Tracker</h1>
+        </div>
+        <div class="status-panel" id="encounterStatus" aria-live="polite"></div>
+      </section>
+
+      <div class="tracker-layout">
+        <aside class="quick-panel character-panel" aria-labelledby="character-library-title">
+          <div class="section-heading compact-heading">
+            <h2 id="character-library-title">Characters</h2>
+            <span id="storageStatus">Loading server storage</span>
+          </div>
+          <div id="characterQuickList" class="quick-items"></div>
+          <p id="emptyCharacterQuickList" class="quick-empty">No saved characters yet.</p>
+        </aside>
+
+        <div class="tracker-main">
+          <section class="control-band" aria-label="Encounter controls">
+            <form id="combatantForm" class="combatant-form">
+              <input type="hidden" id="combatantId" />
+
+              <label>
+                <span>Name</span>
+                <input id="nameInput" type="text" autocomplete="off" required />
+              </label>
+
+              <label>
+                <span>Type</span>
+                <select id="typeInput">
+                  <option value="character">Character</option>
+                  <option value="monster">Monster</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Max HP</span>
+                <input id="maxHpInput" type="number" min="1" step="1" required />
+              </label>
+
+              <label>
+                <span>Current HP</span>
+                <input id="currentHpInput" type="number" min="0" step="1" required />
+              </label>
+
+              <label>
+                <span>Initiative</span>
+                <input id="initiativeInput" type="number" step="1" required />
+              </label>
+
+              <div class="form-actions">
+                <button class="primary-action" type="submit" id="saveCombatantButton">Add</button>
+                <button type="button" id="saveQuickAccessButton">Save to Quick Access</button>
+                <button type="button" id="cancelEditButton" hidden>Cancel</button>
+              </div>
+            </form>
+
+            <div class="encounter-actions">
+              <button class="start-action" type="button" id="startEncounterButton">Start Encounter</button>
+              <button type="button" id="resetEncounterButton">Reset</button>
+              <p id="startRequirement" class="hint"></p>
+            </div>
+          </section>
+
+          <section class="turn-band" id="turnPanel" aria-label="Turn controls" hidden>
+            <div class="turn-summary">
+              <span class="label">Current turn</span>
+              <strong id="activeCombatantName"></strong>
+            </div>
+
+            <form id="damageForm" class="damage-form">
+              <label>
+                <span>Target</span>
+                <select id="targetInput" required></select>
+              </label>
+
+              <label>
+                <span>Damage</span>
+                <input id="damageInput" type="number" min="1" step="1" required />
+              </label>
+
+              <button class="danger-action" type="submit">Apply Damage</button>
+              <button type="button" id="nextTurnButton">Next Turn</button>
+            </form>
+          </section>
+
+          <section class="list-band" aria-labelledby="combatants-title">
+            <div class="section-heading">
+              <h2 id="combatants-title">Initiative Order</h2>
+              <span id="combatantCount"></span>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">HP</th>
+                    <th scope="col">Initiative</th>
+                    <th scope="col">Damage Done</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="setup-column">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="combatantRows"></tbody>
+              </table>
+            </div>
+
+            <p class="empty-state" id="emptyState">Add at least one character and one monster to begin.</p>
+          </section>
+        </div>
+
+        <aside class="quick-panel monster-panel" aria-labelledby="monster-library-title">
+          <div class="section-heading compact-heading">
+            <h2 id="monster-library-title">Monsters</h2>
+          </div>
+          <div id="monsterQuickList" class="quick-items"></div>
+          <p id="emptyMonsterQuickList" class="quick-empty">No saved monsters yet.</p>
+        </aside>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

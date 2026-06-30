@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Thorne Ironvale",
+    "maxHp": 34,
+    "currentHp": 34
+  },
+  {
+    "name": "Mira Dawnspark",
+    "maxHp": 22,
+    "currentHp": 22
+  },
+  {
+    "name": "Kael Fenrunner",
+    "maxHp": 28,
+    "currentHp": 28
+  }
+]

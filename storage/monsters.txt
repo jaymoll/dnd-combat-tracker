@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Goblin Cutter",
+    "maxHp": 7,
+    "currentHp": 7
+  },
+  {
+    "name": "Orc Brute",
+    "maxHp": 15,
+    "currentHp": 15
+  },
+  {
+    "name": "Skeleton Archer",
+    "maxHp": 13,
+    "currentHp": 13
+  }
+]
