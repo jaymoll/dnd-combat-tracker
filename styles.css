@@ -60,7 +60,8 @@ button:disabled {
 }
 
 .app-shell {
-  width: min(1440px, calc(100% - 32px));
+  width: max-content;
+  min-width: calc(100% - 32px);
   margin: 0 auto;
   padding: 28px 0 40px;
 }
@@ -86,14 +87,14 @@ button:disabled {
 
 .tracker-layout {
   display: grid;
-  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) minmax(210px, 260px);
+  grid-template-columns: minmax(210px, 260px) minmax(max-content, 1fr) minmax(210px, 260px);
   gap: 16px;
   align-items: start;
   margin-top: 16px;
 }
 
 .tracker-main {
-  min-width: 0;
+  min-width: max-content;
 }
 
 .eyebrow {
@@ -151,7 +152,7 @@ h2 {
 .combatant-form,
 .damage-form {
   display: grid;
-  grid-template-columns: minmax(150px, 1.4fr) minmax(130px, 0.9fr) repeat(3, minmax(105px, 0.7fr)) auto;
+  grid-template-columns: minmax(220px, 2fr) minmax(130px, 0.8fr) repeat(3, minmax(78px, 0.35fr)) auto;
   gap: 12px;
   align-items: end;
 }
@@ -331,12 +332,15 @@ button:focus-visible {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow-x: visible;
 }
 
 table {
   width: 100%;
-  min-width: 880px;
+  min-width: max-content;
   border-collapse: collapse;
 }
 
@@ -346,6 +350,7 @@ td {
   padding: 12px 10px;
   text-align: left;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 th {
@@ -369,6 +374,8 @@ tr.defeated-row {
 .name-cell {
   min-width: 180px;
   font-weight: 850;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .type-pill,
@@ -427,7 +434,8 @@ tr.defeated-row {
 
 @media (max-width: 860px) {
   .app-shell {
-    width: min(100% - 20px, 1180px);
+    width: calc(100% - 20px);
+    min-width: 0;
     padding-top: 10px;
   }
 
@@ -451,6 +459,13 @@ tr.defeated-row {
 
   .tracker-main {
     order: 1;
+    min-width: 0;
+  }
+
+  .table-wrap {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 
   .monster-panel {
