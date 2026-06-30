@@ -1,0 +1,13 @@
+services:
+  combat-tracker:
+    command: npm run dev
+    volumes:
+      - ./app.js:/app/app.js
+      - ./index.html:/app/index.html
+      - ./styles.css:/app/styles.css
+      - ./server.js:/app/server.js
+      - ./dev-server.js:/app/dev-server.js
+      - ./storage:/app/storage
+    environment:
+      - NODE_ENV=development
+      - PORT=3000

@@ -2,6 +2,7 @@ const createInitialState = () => ({
   combatants: [],
   hasStarted: false,
   currentTurnIndex: 0,
+  attacksUsedThisTurn: 0,
   isFinished: false,
   winner: null,
   nextOrder: 0,
@@ -21,6 +22,7 @@ const normalizeQuickAccessEntry = (entry, type) => {
   const maxHp = clampNumber(entry.maxHp, 1);
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
   const armorClass = clampNumber(entry.armorClass ?? 10, 1);
+  const attacksPerTurn = clampNumber(entry.attacksPerTurn ?? 1, 1);
   const toHit = clampNumber(entry.toHit ?? 0, -99);
   const damageMin = clampNumber(entry.damageMin ?? 1, 0);
   const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
@@ -35,6 +37,7 @@ const normalizeQuickAccessEntry = (entry, type) => {
     maxHp,
     currentHp,
     armorClass,
+    attacksPerTurn,
     toHit,
     damageMin,
     damageMax,
@@ -59,6 +62,7 @@ const elements = {
   maxHp: document.querySelector("#maxHpInput"),
   currentHp: document.querySelector("#currentHpInput"),
   initiative: document.querySelector("#initiativeInput"),
+  attacksPerTurn: document.querySelector("#attacksPerTurnInput"),
   armorClass: document.querySelector("#armorClassInput"),
   monsterFields: document.querySelector("#monsterFields"),
   toHit: document.querySelector("#toHitInput"),
@@ -74,6 +78,7 @@ const elements = {
   status: document.querySelector("#encounterStatus"),
   turnPanel: document.querySelector("#turnPanel"),
   activeName: document.querySelector("#activeCombatantName"),
+  attackCounter: document.querySelector("#attackCounter"),
   damageForm: document.querySelector("#damageForm"),
   target: document.querySelector("#targetInput"),
   damage: document.querySelector("#damageInput"),
@@ -130,6 +135,7 @@ const createQuickAccessEntry = (formCombatant) => ({
   maxHp: formCombatant.maxHp,
   currentHp: formCombatant.currentHp,
   armorClass: formCombatant.armorClass,
+  attacksPerTurn: formCombatant.attacksPerTurn,
   toHit: formCombatant.toHit,
   damageMin: formCombatant.damageMin,
   damageMax: formCombatant.damageMax,
@@ -208,6 +214,7 @@ const readCombatantForm = () => {
   const maxHp = clampNumber(elements.maxHp.value, 1);
   const currentHp = clampNumber(elements.currentHp.value, 0, maxHp);
   const armorClass = clampNumber(elements.armorClass.value, 1);
+  const attacksPerTurn = clampNumber(elements.attacksPerTurn.value, 1);
   const isMonster = elements.type.value === "monster";
   const damageMin = isMonster ? clampNumber(elements.damageMin.value, 0) : 0;
   const damageMax = isMonster ? clampNumber(elements.damageMax.value, damageMin, Number.MAX_SAFE_INTEGER) : 0;
@@ -222,6 +229,7 @@ const readCombatantForm = () => {
     currentHp,
     initiative: parseInteger(elements.initiative.value),
     armorClass,
+    attacksPerTurn,
     toHit: isMonster ? parseInteger(elements.toHit.value) : 0,
     damageMin,
     damageMax,
@@ -241,6 +249,8 @@ const activeCombatantCanAct = () => {
   const active = getActiveCombatant();
   return active && !active.isDefeated && state.hasStarted && !state.isFinished;
 };
+
+const getAttackLimit = (combatant) => clampNumber(combatant?.attacksPerTurn ?? 1, 1);
 
 const getNextLivingIndex = (startIndex = 0) => {
   const combatants = sortedCombatants();
@@ -281,6 +291,22 @@ const damageCombatant = (attacker, target, requestedDamage) => {
   return actualDamage;
 };
 
+const finishAttack = (message) => {
+  const active = getActiveCombatant();
+  state.attacksUsedThisTurn += 1;
+  checkEncounterEnd();
+
+  let resultMessage = message;
+  if (!state.isFinished && state.attacksUsedThisTurn >= getAttackLimit(active)) {
+    state.currentTurnIndex = getNextLivingIndex(state.currentTurnIndex + 1);
+    state.attacksUsedThisTurn = 0;
+    resultMessage = `${message} Turn ended automatically.`;
+  }
+
+  elements.rollResult.textContent = resultMessage;
+  render();
+};
+
 const resetForm = () => {
   formMode = "encounter";
   libraryEditTarget = null;
@@ -292,6 +318,7 @@ const resetForm = () => {
   elements.maxHp.value = "";
   elements.currentHp.value = "";
   elements.initiative.value = "";
+  elements.attacksPerTurn.value = "1";
   elements.armorClass.value = "";
   elements.toHit.value = "";
   elements.damageMin.value = "";
@@ -311,6 +338,7 @@ const fillForm = (combatant) => {
   elements.currentHp.value = combatant.currentHp;
   elements.currentHp.max = combatant.maxHp;
   elements.initiative.value = combatant.initiative;
+  elements.attacksPerTurn.value = combatant.attacksPerTurn;
   elements.armorClass.value = combatant.armorClass;
   elements.toHit.value = combatant.toHit;
   elements.damageMin.value = combatant.damageMin;
@@ -330,6 +358,7 @@ const fillLibraryForm = (entry, type) => {
   elements.currentHp.value = entry.currentHp;
   elements.currentHp.max = entry.maxHp;
   elements.initiative.value = "0";
+  elements.attacksPerTurn.value = entry.attacksPerTurn;
   elements.armorClass.value = entry.armorClass;
   elements.toHit.value = entry.toHit;
   elements.damageMin.value = entry.damageMin;
@@ -361,6 +390,7 @@ const renderFormState = () => {
   elements.maxHp.disabled = setupDisabled;
   elements.currentHp.disabled = setupDisabled;
   elements.initiative.disabled = setupDisabled || formMode === "library";
+  elements.attacksPerTurn.disabled = setupDisabled;
   elements.armorClass.disabled = setupDisabled;
   elements.toHit.disabled = setupDisabled || elements.type.value !== "monster";
   elements.damageMin.disabled = setupDisabled || elements.type.value !== "monster";
@@ -389,6 +419,7 @@ const renderQuickAccessList = (type, listElement, emptyElement) => {
         <div>
           <strong>${escapeHtml(item.name)}</strong>
           <span>${item.currentHp}/${item.maxHp} HP, AC ${item.armorClass}</span>
+          <span>${item.attacksPerTurn} attack${item.attacksPerTurn === 1 ? "" : "s"} per turn</span>
           ${item.type === "monster" ? `<span>${escapeHtml(getDamageText(item))}</span>` : ""}
         </div>
         <div class="quick-actions">
@@ -411,6 +442,7 @@ const renderTurnPanel = () => {
 
   if (!activeCombatantCanAct()) {
     elements.activeName.textContent = "";
+    elements.attackCounter.textContent = "";
     elements.target.innerHTML = "";
     elements.rollResult.textContent = "";
     return;
@@ -422,6 +454,7 @@ const renderTurnPanel = () => {
   );
 
   elements.activeName.textContent = active.name;
+  elements.attackCounter.textContent = `Attacks ${state.attacksUsedThisTurn} / ${getAttackLimit(active)}`;
   elements.target.innerHTML = targets
     .map(
       (combatant) =>
@@ -462,6 +495,7 @@ const renderRows = () => {
         <td>${combatant.armorClass}</td>
         <td>${combatant.currentHp} / ${combatant.maxHp}</td>
         <td>${combatant.initiative}</td>
+        <td>${combatant.attacksPerTurn}</td>
         <td>${escapeHtml(getDamageText(combatant))}</td>
         <td>${combatant.damageDone}</td>
         <td><span class="status-pill status-${status.toLowerCase()}">${status}</span></td>
@@ -476,7 +510,11 @@ const render = () => {
   checkEncounterEnd();
 
   if (state.hasStarted && !state.isFinished) {
-    state.currentTurnIndex = getNextLivingIndex(state.currentTurnIndex);
+    const nextIndex = getNextLivingIndex(state.currentTurnIndex);
+    if (nextIndex !== state.currentTurnIndex) {
+      state.attacksUsedThisTurn = 0;
+    }
+    state.currentTurnIndex = nextIndex;
   }
 
   renderStatus();
@@ -549,6 +587,7 @@ const addCombatantFromQuickAccess = (entry) => {
     currentHp: entry.currentHp,
     initiative: parseInteger(initiative),
     armorClass: entry.armorClass,
+    attacksPerTurn: entry.attacksPerTurn,
     toHit: entry.toHit,
     damageMin: entry.damageMin,
     damageMax: entry.damageMax,
@@ -589,6 +628,7 @@ const startEncounter = () => {
   if (!hasRequiredSides()) return;
   state.hasStarted = true;
   state.currentTurnIndex = getNextLivingIndex(0);
+  state.attacksUsedThisTurn = 0;
   resetForm();
   render();
 };
@@ -612,9 +652,7 @@ const applyDamage = (event) => {
   const actualDamage = damageCombatant(attacker, target, requestedDamage);
 
   elements.damage.value = "";
-  elements.rollResult.textContent = `${active.name} dealt ${actualDamage} damage to ${target.name}.`;
-  checkEncounterEnd();
-  render();
+  finishAttack(`${active.name} dealt ${actualDamage} damage to ${target.name}.`);
 };
 
 const rollAttack = () => {
@@ -629,23 +667,20 @@ const rollAttack = () => {
   const attackTotal = d20 + attacker.toHit;
 
   if (attackTotal < target.armorClass) {
-    elements.rollResult.textContent = `${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, missing ${target.name}'s AC ${target.armorClass}.`;
-    render();
+    finishAttack(`${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, missing ${target.name}'s AC ${target.armorClass}.`);
     return;
   }
 
   const damageRoll = rollInclusive(attacker.damageMin, attacker.damageMax);
   const requestedDamage = Math.max(0, damageRoll + attacker.damageBonus);
   const actualDamage = damageCombatant(attacker, target, requestedDamage);
-  elements.rollResult.textContent = `${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, hit AC ${target.armorClass}, and dealt ${actualDamage} damage (${damageRoll} ${formatModifier(attacker.damageBonus)}).`;
-
-  checkEncounterEnd();
-  render();
+  finishAttack(`${attacker.name} rolled ${d20} ${formatModifier(attacker.toHit)} = ${attackTotal}, hit AC ${target.armorClass}, and dealt ${actualDamage} damage (${damageRoll} ${formatModifier(attacker.damageBonus)}).`);
 };
 
 const nextTurn = () => {
   if (!state.hasStarted || state.isFinished) return;
   state.currentTurnIndex = getNextLivingIndex(state.currentTurnIndex + 1);
+  state.attacksUsedThisTurn = 0;
   render();
 };
 

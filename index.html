@@ -40,6 +40,7 @@
             <div class="turn-summary">
               <span class="label">Current turn</span>
               <strong id="activeCombatantName"></strong>
+              <span id="attackCounter"></span>
             </div>
 
             <form id="damageForm" class="damage-form">
@@ -76,6 +77,7 @@
                     <th scope="col">AC</th>
                     <th scope="col">HP</th>
                     <th scope="col">Initiative</th>
+                    <th scope="col">Attacks</th>
                     <th scope="col">Attack</th>
                     <th scope="col">Damage Done</th>
                     <th scope="col">Status</th>
@@ -135,6 +137,11 @@
         <label>
           <span>Initiative</span>
           <input id="initiativeInput" type="number" step="1" required />
+        </label>
+
+        <label>
+          <span>Attacks</span>
+          <input id="attacksPerTurnInput" type="number" min="1" step="1" required />
         </label>
 
         <label>
