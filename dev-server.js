@@ -3,6 +3,7 @@ import { watchFile } from "node:fs";
 
 let child = null;
 let restarting = false;
+let restartTimer = null;
 
 const start = () => {
   child = spawn(process.execPath, ["server.js"], { stdio: "inherit" });
@@ -18,6 +19,7 @@ const start = () => {
 };
 
 const restart = () => {
+  if (restarting) return;
   restarting = true;
   child?.once("exit", () => {
     restarting = false;
@@ -27,7 +29,8 @@ const restart = () => {
 };
 
 watchFile("server.js", { interval: 500 }, () => {
-  restart();
+  clearTimeout(restartTimer);
+  restartTimer = setTimeout(restart, 150);
 });
 
 process.on("SIGINT", () => {

@@ -36,6 +36,7 @@ const normalizeEntry = (entry, type, index) => {
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
   const armorClass = clampNumber(entry.armorClass ?? 10, 1);
   const attacksPerTurn = clampNumber(entry.attacksPerTurn ?? 1, 1);
+  const initiativeBonus = clampNumber(entry.initiativeBonus ?? 0, -99);
   const toHit = clampNumber(entry.toHit ?? 0, -99);
   const damageMin = clampNumber(entry.damageMin ?? 1, 0);
   const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
@@ -51,6 +52,7 @@ const normalizeEntry = (entry, type, index) => {
     currentHp,
     armorClass,
     attacksPerTurn,
+    initiativeBonus,
     toHit,
     damageMin,
     damageMax,
@@ -86,6 +88,7 @@ const writeLibraryType = async (type, entries) => {
     currentHp: entry.currentHp,
     armorClass: entry.armorClass,
     attacksPerTurn: entry.attacksPerTurn,
+    initiativeBonus: entry.initiativeBonus,
     toHit: entry.toHit,
     damageMin: entry.damageMin,
     damageMax: entry.damageMax,

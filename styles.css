@@ -422,6 +422,20 @@ tr.active-row {
   outline-offset: -2px;
 }
 
+tr.targetable-row {
+  cursor: pointer;
+}
+
+tr.targetable-row:hover {
+  background: #f3f7f7;
+}
+
+tr.selected-target-row {
+  background: var(--character-soft);
+  outline: 2px solid var(--character);
+  outline-offset: -2px;
+}
+
 tr.defeated-row {
   color: var(--muted);
   text-decoration: line-through;

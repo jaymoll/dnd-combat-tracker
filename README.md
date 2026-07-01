@@ -16,7 +16,7 @@ Open http://localhost:3000.
 docker compose -f docker-compose.yml -f docker-compose.watch.yml up --build
 ```
 
-This bind-mounts `app.js`, `index.html`, `styles.css`, `server.js`, and `storage` into the container. Frontend changes refresh in the browser, and `server.js` restarts through a polling watcher that works reliably with Docker Desktop file mounts.
+This bind-mounts `app.js`, `src/`, `index.html`, `styles.css`, `server.js`, and `storage` into the container. Frontend changes refresh in the browser, and `server.js` restarts through a polling watcher that works reliably with Docker Desktop file mounts.
 
 The app stores quick-access characters and monsters in:
 
