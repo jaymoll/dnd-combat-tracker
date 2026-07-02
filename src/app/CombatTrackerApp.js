@@ -2,8 +2,10 @@ import { activeCombatantCanAct } from "../combat.js";
 import { CombatantFormController } from "../controllers/CombatantFormController.js";
 import { QuickAccessController } from "../controllers/QuickAccessController.js";
 import { RosterController } from "../controllers/RosterController.js";
+import { SpellFormController } from "../controllers/SpellFormController.js";
 import { TargetController } from "../controllers/TargetController.js";
 import { TurnController } from "../controllers/TurnController.js";
+import { WeaponFormController } from "../controllers/WeaponFormController.js";
 import { createInitialState } from "../models.js";
 import { CombatTrackerRenderer } from "../renderers/CombatTrackerRenderer.js";
 import { CombatantFactory } from "../services/combatantFactory.js";
@@ -14,12 +16,20 @@ export class CombatTrackerApp {
     this.elements = elements;
     this.state = createInitialState();
     this.formController = new CombatantFormController(elements);
+    this.spellFormController = new SpellFormController(elements);
+    this.weaponFormController = new WeaponFormController(elements);
     this.targetController = new TargetController();
     this.quickAccessController = new QuickAccessController(libraryRepository, elements);
     this.turnController = new TurnController();
     this.combatantFactory = new CombatantFactory();
     this.rosterController = new RosterController(this.combatantFactory);
-    this.renderer = new CombatTrackerRenderer(elements, this.formController, this.targetController);
+    this.renderer = new CombatTrackerRenderer(
+      elements,
+      this.formController,
+      this.targetController,
+      this.spellFormController,
+      this.weaponFormController,
+    );
   }
 
   async init() {
@@ -39,17 +49,40 @@ export class CombatTrackerApp {
     this.elements.startButton.addEventListener("click", () => this.startEncounter());
     this.elements.resetButton.addEventListener("click", () => this.resetEncounter());
     this.elements.damageForm.addEventListener("submit", (event) => this.applyDamage(event));
+    this.elements.conditionForm.addEventListener("submit", (event) => this.applyCondition(event));
+    this.elements.removeConditionButton.addEventListener("click", () => this.removeCondition());
+    this.elements.conditionTarget.addEventListener("change", () => this.renderer.renderTurnPanel(this.state));
+    this.elements.condition.addEventListener("change", () => this.renderer.renderTurnPanel(this.state));
     this.elements.rollAttackButton.addEventListener("click", () => this.rollAttack());
+    this.elements.castSpellButton.addEventListener("click", () => this.castSpell());
     this.elements.nextTurnButton.addEventListener("click", () => this.nextTurn());
+    this.elements.openSpellModalButton.addEventListener("click", () => this.openAddSpellModal());
+    this.elements.closeSpellModalButton.addEventListener("click", () => this.cancelSpellForm());
+    this.elements.cancelSpellButton.addEventListener("click", () => this.cancelSpellForm());
+    this.elements.spellForm.addEventListener("submit", (event) => this.upsertSpell(event));
+    this.elements.spellDamageMin.addEventListener("input", () => this.spellFormController.syncDamageMaxLimit());
+    this.elements.openWeaponModalButton.addEventListener("click", () => this.openAddWeaponModal());
+    this.elements.closeWeaponModalButton.addEventListener("click", () => this.cancelWeaponForm());
+    this.elements.cancelWeaponButton.addEventListener("click", () => this.cancelWeaponForm());
+    this.elements.weaponForm.addEventListener("submit", (event) => this.upsertWeapon(event));
+    this.elements.weaponDamageMin.addEventListener("input", () => this.weaponFormController.syncDamageMaxLimit());
     this.elements.target.addEventListener("change", () => this.selectTargetFromInput());
     this.elements.type.addEventListener("change", () => this.handleCreatureTypeChange());
     this.elements.modal.addEventListener("cancel", () => this.formController.reset());
     this.elements.modal.addEventListener("click", (event) => this.handleModalBackdropClick(event));
+    this.elements.spellModal.addEventListener("cancel", () => this.spellFormController.reset());
+    this.elements.spellModal.addEventListener("click", (event) => this.handleSpellModalBackdropClick(event));
+    this.elements.weaponModal.addEventListener("cancel", () => this.weaponFormController.reset());
+    this.elements.weaponModal.addEventListener("click", (event) => this.handleWeaponModalBackdropClick(event));
     this.elements.rows.addEventListener("click", (event) => this.handleCombatantRowClick(event));
+    this.elements.collapseToggleButtons.forEach((button) => {
+      button.addEventListener("click", () => this.toggleList(button));
+    });
     this.elements.characterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
     this.elements.monsterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
+    this.elements.spellQuickList.addEventListener("click", (event) => this.handleSpellQuickAccessClick(event));
+    this.elements.weaponQuickList.addEventListener("click", (event) => this.handleWeaponQuickAccessClick(event));
     this.elements.maxHp.addEventListener("input", () => this.syncCurrentHpLimit());
-    this.elements.damageMin.addEventListener("input", () => this.syncDamageMaxLimit());
   }
 
   render() {
@@ -66,6 +99,30 @@ export class CombatTrackerApp {
   cancelForm() {
     this.formController.reset();
     this.formController.close();
+  }
+
+  openAddSpellModal() {
+    if (this.state.hasStarted) return;
+
+    this.spellFormController.reset();
+    this.spellFormController.open("add");
+  }
+
+  cancelSpellForm() {
+    this.spellFormController.reset();
+    this.spellFormController.close();
+  }
+
+  openAddWeaponModal() {
+    if (this.state.hasStarted) return;
+
+    this.weaponFormController.reset();
+    this.weaponFormController.open("add");
+  }
+
+  cancelWeaponForm() {
+    this.weaponFormController.reset();
+    this.weaponFormController.close();
   }
 
   upsertCombatant(event) {
@@ -107,6 +164,50 @@ export class CombatTrackerApp {
     if (!didSave) return;
 
     this.formController.close();
+    this.render();
+  }
+
+  async upsertSpell(event) {
+    event.preventDefault();
+    if (this.state.hasStarted) return;
+
+    const spell = this.spellFormController.read();
+    if (!spell) {
+      this.elements.spellName.focus();
+      return;
+    }
+
+    const id = this.elements.spellId.value;
+    const didSave = id
+      ? await this.quickAccessController.updateSpell(id, spell)
+      : await this.quickAccessController.createSpell(spell);
+
+    if (!didSave) return;
+
+    this.spellFormController.reset();
+    this.spellFormController.close();
+    this.render();
+  }
+
+  async upsertWeapon(event) {
+    event.preventDefault();
+    if (this.state.hasStarted) return;
+
+    const weapon = this.weaponFormController.read();
+    if (!weapon) {
+      this.elements.weaponName.focus();
+      return;
+    }
+
+    const id = this.elements.weaponId.value;
+    const didSave = id
+      ? await this.quickAccessController.updateWeapon(id, weapon)
+      : await this.quickAccessController.createWeapon(weapon);
+
+    if (!didSave) return;
+
+    this.weaponFormController.reset();
+    this.weaponFormController.close();
     this.render();
   }
 
@@ -159,7 +260,23 @@ export class CombatTrackerApp {
     if (!activeCombatantCanAct(this.state)) return;
 
     this.targetController.set(this.elements.target.value);
-    const result = this.turnController.rollAttack(this.state, this.elements.target.value);
+    const result = this.turnController.rollAttack(
+      this.state,
+      this.elements.target.value,
+      this.elements.weapon.value,
+    );
+    if (result) this.finishAttack(result);
+  }
+
+  castSpell() {
+    if (!activeCombatantCanAct(this.state)) return;
+
+    this.targetController.set(this.elements.target.value);
+    const result = this.turnController.castSpell(
+      this.state,
+      this.elements.target.value,
+      this.elements.spell.value,
+    );
     if (result) this.finishAttack(result);
   }
 
@@ -167,6 +284,35 @@ export class CombatTrackerApp {
     if (result.shouldClearTarget) {
       this.targetController.clear();
     }
+
+    this.elements.rollResult.textContent = result.message;
+    this.render();
+  }
+
+  applyCondition(event) {
+    event.preventDefault();
+    if (!this.state.hasStarted || this.state.isFinished) return;
+
+    const result = this.rosterController.applyCondition(
+      this.state,
+      this.elements.conditionTarget.value,
+      this.elements.condition.value,
+    );
+    if (!result) return;
+
+    this.elements.rollResult.textContent = result.message;
+    this.render();
+  }
+
+  removeCondition() {
+    if (!this.state.hasStarted || this.state.isFinished) return;
+
+    const result = this.rosterController.removeCondition(
+      this.state,
+      this.elements.conditionTarget.value,
+      this.elements.condition.value,
+    );
+    if (!result) return;
 
     this.elements.rollResult.textContent = result.message;
     this.render();
@@ -194,6 +340,36 @@ export class CombatTrackerApp {
 
     this.formController.reset();
     this.formController.close();
+  }
+
+  handleSpellModalBackdropClick(event) {
+    if (event.target !== this.elements.spellModal) return;
+
+    this.spellFormController.reset();
+    this.spellFormController.close();
+  }
+
+  handleWeaponModalBackdropClick(event) {
+    if (event.target !== this.elements.weaponModal) return;
+
+    this.weaponFormController.reset();
+    this.weaponFormController.close();
+  }
+
+  toggleList(button) {
+    const list = document.getElementById(button.dataset.collapseToggle);
+    if (!list) return;
+
+    const isExpanded = button.getAttribute("aria-expanded") === "true";
+    list.hidden = isExpanded;
+    button.setAttribute("aria-expanded", String(!isExpanded));
+    button.textContent = isExpanded ? "Show" : "Hide";
+    button.setAttribute("aria-label", `${isExpanded ? "Expand" : "Collapse"} ${this.getListLabel(button)}`);
+  }
+
+  getListLabel(button) {
+    const heading = button.closest(".section-heading")?.querySelector("h2");
+    return heading?.textContent.trim().toLowerCase() || "list";
   }
 
   handleCombatantRowClick(event) {
@@ -247,6 +423,42 @@ export class CombatTrackerApp {
     }
   }
 
+  async handleSpellQuickAccessClick(event) {
+    const button = event.target.closest("button");
+    if (!button || this.state.hasStarted) return;
+
+    const { action, id } = button.dataset;
+    const spell = this.quickAccessController.find("spell", id);
+    if (!spell) return;
+
+    if (action === "edit-spell") {
+      this.spellFormController.fill(spell);
+    }
+
+    if (action === "remove-spell") {
+      await this.quickAccessController.remove("spell", id);
+      this.render();
+    }
+  }
+
+  async handleWeaponQuickAccessClick(event) {
+    const button = event.target.closest("button");
+    if (!button || this.state.hasStarted) return;
+
+    const { action, id } = button.dataset;
+    const weapon = this.quickAccessController.find("weapon", id);
+    if (!weapon) return;
+
+    if (action === "edit-weapon") {
+      this.weaponFormController.fill(weapon);
+    }
+
+    if (action === "remove-weapon") {
+      await this.quickAccessController.remove("weapon", id);
+      this.render();
+    }
+  }
+
   removeCombatant(id) {
     this.rosterController.remove(this.state, id);
     if (this.elements.combatantId.value === id) {
@@ -260,14 +472,6 @@ export class CombatTrackerApp {
     this.elements.currentHp.max = maxHp;
     if (!this.elements.currentHp.value || Number(this.elements.currentHp.value) > maxHp) {
       this.elements.currentHp.value = maxHp;
-    }
-  }
-
-  syncDamageMaxLimit() {
-    const minDamage = clampNumber(this.elements.damageMin.value, 0);
-    this.elements.damageMax.min = minDamage;
-    if (this.elements.damageMax.value && Number(this.elements.damageMax.value) < minDamage) {
-      this.elements.damageMax.value = minDamage;
     }
   }
 }

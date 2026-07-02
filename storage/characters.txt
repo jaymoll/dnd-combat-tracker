@@ -5,10 +5,8 @@
     "currentHp": 34,
     "armorClass": 10,
     "attacksPerTurn": 2,
-    "toHit": 0,
-    "damageMin": 0,
-    "damageMax": 0,
-    "damageBonus": 0
+    "spells": [],
+    "weapons": []
   },
   {
     "name": "Mira Dawnspark",
@@ -16,10 +14,8 @@
     "currentHp": 22,
     "armorClass": 10,
     "attacksPerTurn": 2,
-    "toHit": 0,
-    "damageMin": 0,
-    "damageMax": 0,
-    "damageBonus": 0
+    "spells": [],
+    "weapons": []
   },
   {
     "name": "Kael Fenrunner",
@@ -27,9 +23,7 @@
     "currentHp": 28,
     "armorClass": 10,
     "attacksPerTurn": 1,
-    "toHit": 0,
-    "damageMin": 1,
-    "damageMax": 1,
-    "damageBonus": 0
+    "spells": [],
+    "weapons": []
   }
 ]

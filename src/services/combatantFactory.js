@@ -1,3 +1,4 @@
+import { getAbilityModifier, normalizeConditions } from "../models.js";
 import { parseInteger, rollInclusive } from "../utils.js";
 
 export class CombatantFactory {
@@ -6,7 +7,7 @@ export class CombatantFactory {
   }
 
   rollMonsterInitiative(creature) {
-    return rollInclusive(1, 20) + creature.initiativeBonus;
+    return rollInclusive(1, 20) + getAbilityModifier(creature.statBlock?.dexterity ?? 10);
   }
 
   createFromForm(formCombatant, { id, existing, nextOrder }) {
@@ -18,6 +19,7 @@ export class CombatantFactory {
           ? this.rollMonsterInitiative(formCombatant)
           : formCombatant.initiative,
       damageDone: existing?.damageDone ?? 0,
+      conditions: existing?.conditions ?? normalizeConditions(formCombatant.conditions),
       isDefeated: formCombatant.currentHp === 0,
       order: existing?.order ?? nextOrder,
     };
@@ -33,12 +35,11 @@ export class CombatantFactory {
       initiative: entry.type === "monster" ? initiative : parseInteger(initiative),
       armorClass: entry.armorClass,
       attacksPerTurn: entry.attacksPerTurn,
-      initiativeBonus: entry.initiativeBonus,
-      toHit: entry.toHit,
-      damageMin: entry.damageMin,
-      damageMax: entry.damageMax,
-      damageBonus: entry.damageBonus,
+      statBlock: entry.statBlock,
+      weapons: entry.weapons ?? [],
+      spells: entry.spells ?? [],
       damageDone: 0,
+      conditions: [],
       isDefeated: entry.currentHp === 0,
       order: nextOrder,
     };

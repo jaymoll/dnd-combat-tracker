@@ -5,11 +5,43 @@
     "currentHp": 7,
     "armorClass": 15,
     "attacksPerTurn": 1,
-    "initiativeBonus": 2,
-    "toHit": 4,
-    "damageMin": 1,
-    "damageMax": 8,
-    "damageBonus": 2
+    "statBlock": {
+      "size": "Small",
+      "creatureType": "humanoid",
+      "alignment": "neutral evil",
+      "speed": "30 ft.",
+      "strength": 8,
+      "dexterity": 14,
+      "constitution": 10,
+      "intelligence": 10,
+      "wisdom": 8,
+      "charisma": 8,
+      "savingThrows": "",
+      "skills": "Stealth +6",
+      "damageVulnerabilities": "",
+      "damageResistances": "",
+      "damageImmunities": "",
+      "conditionImmunities": "",
+      "senses": "darkvision 60 ft., passive Perception 9",
+      "languages": "Common, Goblin",
+      "challengeRating": "1/4",
+      "spellcastingAbility": "intelligence",
+      "traits": "Nimble Escape. The goblin can take the Disengage or Hide action as a bonus action on each of its turns.",
+      "actions": "Scimitar. Melee Weapon Attack using dexterity. Hit: 1-8 + DEX slashing damage.",
+      "reactions": "",
+      "legendaryActions": ""
+    },
+    "spells": [],
+    "weapons": [
+      {
+        "name": "Scimitar",
+        "description": "A light curved blade.",
+        "ability": "dexterity",
+        "damageMin": 1,
+        "damageMax": 8,
+        "damageBonus": 0
+      }
+    ]
   },
   {
     "name": "Orc Brute",
@@ -17,11 +49,43 @@
     "currentHp": 15,
     "armorClass": 13,
     "attacksPerTurn": 2,
-    "initiativeBonus": 1,
-    "toHit": 5,
-    "damageMin": 2,
-    "damageMax": 12,
-    "damageBonus": 3
+    "statBlock": {
+      "size": "Medium",
+      "creatureType": "humanoid",
+      "alignment": "chaotic evil",
+      "speed": "30 ft.",
+      "strength": 16,
+      "dexterity": 12,
+      "constitution": 16,
+      "intelligence": 7,
+      "wisdom": 11,
+      "charisma": 10,
+      "savingThrows": "",
+      "skills": "Intimidation +2",
+      "damageVulnerabilities": "",
+      "damageResistances": "",
+      "damageImmunities": "",
+      "conditionImmunities": "",
+      "senses": "darkvision 60 ft., passive Perception 10",
+      "languages": "Common, Orc",
+      "challengeRating": "1/2",
+      "spellcastingAbility": "wisdom",
+      "traits": "Aggressive. As a bonus action, the orc can move up to its speed toward a hostile creature that it can see.",
+      "actions": "Greataxe. Melee Weapon Attack using strength. Hit: 2-12 + STR slashing damage.",
+      "reactions": "",
+      "legendaryActions": ""
+    },
+    "spells": [],
+    "weapons": [
+      {
+        "name": "Greataxe",
+        "description": "A heavy axe swung with brute force.",
+        "ability": "strength",
+        "damageMin": 2,
+        "damageMax": 12,
+        "damageBonus": 0
+      }
+    ]
   },
   {
     "name": "Skeleton Archer",
@@ -29,10 +93,94 @@
     "currentHp": 13,
     "armorClass": 13,
     "attacksPerTurn": 1,
-    "initiativeBonus": 2,
-    "toHit": 4,
-    "damageMin": 2,
-    "damageMax": 8,
-    "damageBonus": 2
+    "statBlock": {
+      "size": "Medium",
+      "creatureType": "undead",
+      "alignment": "lawful evil",
+      "speed": "30 ft.",
+      "strength": 10,
+      "dexterity": 14,
+      "constitution": 15,
+      "intelligence": 6,
+      "wisdom": 8,
+      "charisma": 5,
+      "savingThrows": "",
+      "skills": "",
+      "damageVulnerabilities": "bludgeoning",
+      "damageResistances": "",
+      "damageImmunities": "poison",
+      "conditionImmunities": "exhaustion, poisoned",
+      "senses": "darkvision 60 ft., passive Perception 9",
+      "languages": "understands languages it knew in life but can't speak",
+      "challengeRating": "1/4",
+      "spellcastingAbility": "wisdom",
+      "traits": "",
+      "actions": "Shortbow. Ranged Weapon Attack using dexterity. Hit: 2-8 + DEX piercing damage.",
+      "reactions": "",
+      "legendaryActions": ""
+    },
+    "spells": [],
+    "weapons": [
+      {
+        "name": "Shortbow",
+        "description": "A compact bow for ranged attacks.",
+        "ability": "dexterity",
+        "damageMin": 2,
+        "damageMax": 8,
+        "damageBonus": 0
+      }
+    ]
+  },
+  {
+    "name": "Goblin Shaman",
+    "maxHp": 12,
+    "currentHp": 12,
+    "armorClass": 12,
+    "attacksPerTurn": 1,
+    "statBlock": {
+      "size": "Small",
+      "creatureType": "humanoid",
+      "alignment": "neutral evil",
+      "speed": "30 ft.",
+      "strength": 8,
+      "dexterity": 14,
+      "constitution": 10,
+      "intelligence": 10,
+      "wisdom": 30,
+      "charisma": 10,
+      "savingThrows": "",
+      "skills": "Stealth +6",
+      "damageVulnerabilities": "",
+      "damageResistances": "",
+      "damageImmunities": "",
+      "conditionImmunities": "",
+      "senses": "darkvision 60 ft., passive Perception 11",
+      "languages": "Common, Goblin",
+      "challengeRating": "1/4",
+      "spellcastingAbility": "wisdom",
+      "traits": "Nimble Escape. The goblin can take the Disengage or Hide action as a bonus action on each of its turns.",
+      "actions": "Dagger. Weapon Attack using dexterity. Fire Bolt. Spell Attack using wisdom.",
+      "reactions": "",
+      "legendaryActions": ""
+    },
+    "spells": [
+      {
+        "name": "Fire Bolt",
+        "description": "A ranged spell attack that hurls a mote of fire.",
+        "damageMin": 1,
+        "damageMax": 10,
+        "damageBonus": 0
+      }
+    ],
+    "weapons": [
+      {
+        "name": "Dagger",
+        "description": "A small blade that can be thrown or used up close.",
+        "ability": "dexterity",
+        "damageMin": 1,
+        "damageMax": 4,
+        "damageBonus": 0
+      }
+    ]
   }
 ]

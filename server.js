@@ -15,6 +15,8 @@ const storageDirectory = process.env.STORAGE_DIR
 const libraryFiles = {
   character: "characters.txt",
   monster: "monsters.txt",
+  spell: "spells.txt",
+  weapon: "weapons.txt",
 };
 
 app.use(express.json());
@@ -28,19 +30,105 @@ const clampNumber = (value, min, max = Number.MAX_SAFE_INTEGER) => {
 
 const createId = (type, index) => `${type}-${index}`;
 
+const readText = (entry, key, fallback = "") => String(entry?.[key] ?? fallback).trim();
+
+const normalizeMonsterStatBlock = (entry = {}) => {
+  const source = entry.statBlock && typeof entry.statBlock === "object" ? entry.statBlock : entry;
+  const spellcastingAbility = readText(source, "spellcastingAbility", "intelligence");
+
+  return {
+    size: readText(source, "size", "Medium"),
+    creatureType: readText(source, "creatureType", "humanoid"),
+    alignment: readText(source, "alignment", "unaligned"),
+    speed: readText(source, "speed", "30 ft."),
+    strength: clampNumber(source.strength ?? source.str ?? 10, 1, 30),
+    dexterity: clampNumber(source.dexterity ?? source.dex ?? 10, 1, 30),
+    constitution: clampNumber(source.constitution ?? source.con ?? 10, 1, 30),
+    intelligence: clampNumber(source.intelligence ?? source.int ?? 10, 1, 30),
+    wisdom: clampNumber(source.wisdom ?? source.wis ?? 10, 1, 30),
+    charisma: clampNumber(source.charisma ?? source.cha ?? 10, 1, 30),
+    savingThrows: readText(source, "savingThrows"),
+    skills: readText(source, "skills"),
+    damageVulnerabilities: readText(source, "damageVulnerabilities"),
+    damageResistances: readText(source, "damageResistances"),
+    damageImmunities: readText(source, "damageImmunities"),
+    conditionImmunities: readText(source, "conditionImmunities"),
+    senses: readText(source, "senses", "passive Perception 10"),
+    languages: readText(source, "languages"),
+    challengeRating: readText(source, "challengeRating", "0"),
+    spellcastingAbility: ["intelligence", "wisdom", "charisma"].includes(spellcastingAbility)
+      ? spellcastingAbility
+      : "intelligence",
+    traits: readText(source, "traits"),
+    actions: readText(source, "actions"),
+    reactions: readText(source, "reactions"),
+    legendaryActions: readText(source, "legendaryActions"),
+  };
+};
+
+const normalizeSpell = (entry, index = 0) => {
+  if (!entry || typeof entry !== "object") return null;
+
+  const name = String(entry.name ?? "").trim();
+  const description = String(entry.description ?? "").trim();
+  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
+  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
+  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
+
+  if (!name) return null;
+
+  return {
+    id: String(entry.id || createId("spell", index)),
+    name,
+    description,
+    damageMin,
+    damageMax,
+    damageBonus,
+  };
+};
+
+const normalizeWeapon = (entry, index = 0) => {
+  if (!entry || typeof entry !== "object") return null;
+
+  const name = String(entry.name ?? "").trim();
+  const description = String(entry.description ?? "").trim();
+  const rawAbility = entry.ability === "agility" ? "dexterity" : entry.ability;
+  const ability = ["strength", "dexterity"].includes(rawAbility) ? rawAbility : "strength";
+  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
+  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
+  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
+
+  if (!name) return null;
+
+  return {
+    id: String(entry.id || createId("weapon", index)),
+    name,
+    description,
+    ability,
+    damageMin,
+    damageMax,
+    damageBonus,
+  };
+};
+
 const normalizeEntry = (entry, type, index) => {
   if (!entry || typeof entry !== "object") return null;
+
+  if (type === "spell") return normalizeSpell(entry, index);
+  if (type === "weapon") return normalizeWeapon(entry, index);
 
   const name = String(entry.name ?? "").trim();
   const maxHp = clampNumber(entry.maxHp, 1);
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
   const armorClass = clampNumber(entry.armorClass ?? 10, 1);
   const attacksPerTurn = clampNumber(entry.attacksPerTurn ?? 1, 1);
-  const initiativeBonus = clampNumber(entry.initiativeBonus ?? 0, -99);
-  const toHit = clampNumber(entry.toHit ?? 0, -99);
-  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
-  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
-  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
+  const spells = Array.isArray(entry.spells)
+    ? entry.spells.map((spell, spellIndex) => normalizeSpell(spell, spellIndex)).filter(Boolean)
+    : [];
+  const weapons = Array.isArray(entry.weapons)
+    ? entry.weapons.map((weapon, weaponIndex) => normalizeWeapon(weapon, weaponIndex)).filter(Boolean)
+    : [];
+  const statBlock = type === "monster" ? normalizeMonsterStatBlock(entry) : null;
 
   if (!name) return null;
 
@@ -52,11 +140,9 @@ const normalizeEntry = (entry, type, index) => {
     currentHp,
     armorClass,
     attacksPerTurn,
-    initiativeBonus,
-    toHit,
-    damageMin,
-    damageMax,
-    damageBonus,
+    spells,
+    weapons,
+    ...(statBlock ? { statBlock } : {}),
   };
 };
 
@@ -82,24 +168,55 @@ const readLibraryType = async (type) => {
 
 const writeLibraryType = async (type, entries) => {
   await mkdir(storageDirectory, { recursive: true });
-  const cleanEntries = entries.map((entry) => ({
-    name: entry.name,
-    maxHp: entry.maxHp,
-    currentHp: entry.currentHp,
-    armorClass: entry.armorClass,
-    attacksPerTurn: entry.attacksPerTurn,
-    initiativeBonus: entry.initiativeBonus,
-    toHit: entry.toHit,
-    damageMin: entry.damageMin,
-    damageMax: entry.damageMax,
-    damageBonus: entry.damageBonus,
-  }));
+  const cleanEntries =
+    type === "spell"
+      ? entries.map((entry) => ({
+          name: entry.name,
+          description: entry.description,
+          damageMin: entry.damageMin,
+          damageMax: entry.damageMax,
+          damageBonus: entry.damageBonus,
+        }))
+      : type === "weapon"
+        ? entries.map((entry) => ({
+            name: entry.name,
+            description: entry.description,
+            ability: entry.ability,
+            damageMin: entry.damageMin,
+            damageMax: entry.damageMax,
+            damageBonus: entry.damageBonus,
+          }))
+      : entries.map((entry) => ({
+          name: entry.name,
+          maxHp: entry.maxHp,
+          currentHp: entry.currentHp,
+          armorClass: entry.armorClass,
+          attacksPerTurn: entry.attacksPerTurn,
+          ...(type === "monster" ? { statBlock: normalizeMonsterStatBlock(entry) } : {}),
+          spells: (entry.spells ?? []).map((spell) => ({
+            name: spell.name,
+            description: spell.description,
+            damageMin: spell.damageMin,
+            damageMax: spell.damageMax,
+            damageBonus: spell.damageBonus,
+          })),
+          weapons: (entry.weapons ?? []).map((weapon) => ({
+            name: weapon.name,
+            description: weapon.description,
+            ability: weapon.ability,
+            damageMin: weapon.damageMin,
+            damageMax: weapon.damageMax,
+            damageBonus: weapon.damageBonus,
+          })),
+        }));
   await writeFile(getStoragePath(type), `${JSON.stringify(cleanEntries, null, 2)}\n`, "utf8");
 };
 
 const readLibrary = async () => ({
   character: await readLibraryType("character"),
   monster: await readLibraryType("monster"),
+  spell: await readLibraryType("spell"),
+  weapon: await readLibraryType("weapon"),
 });
 
 app.get("/api/health", (request, response) => {

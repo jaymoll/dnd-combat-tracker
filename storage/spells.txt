@@ -1,0 +1,9 @@
+[
+  {
+    "name": "Fire Bolt",
+    "description": "A ranged spell attack that hurls a mote of fire.",
+    "damageMin": 1,
+    "damageMax": 10,
+    "damageBonus": 0
+  }
+]

@@ -35,7 +35,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -97,6 +98,11 @@ button:disabled {
   min-width: max-content;
 }
 
+.side-stack {
+  display: grid;
+  gap: 16px;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--muted);
@@ -149,7 +155,8 @@ h2 {
   border-radius: 8px 8px 0 0;
 }
 
-.damage-form {
+.damage-form,
+.condition-form {
   display: grid;
   grid-template-columns: minmax(220px, 2fr) minmax(130px, 0.8fr) repeat(8, minmax(74px, 0.32fr)) auto;
   gap: 12px;
@@ -163,8 +170,15 @@ h2 {
   align-items: end;
 }
 
+.spell-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(4, minmax(96px, 0.45fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .creature-modal {
-  width: min(920px, calc(100% - 32px));
+  width: min(1040px, calc(100% - 32px));
   max-height: calc(100vh - 48px);
   overflow: auto;
   border: 1px solid var(--line);
@@ -202,6 +216,16 @@ h2 {
   display: none;
 }
 
+.monster-statblock-heading {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding-top: 8px;
+  text-transform: uppercase;
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -211,7 +235,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -223,9 +248,55 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: 3px solid rgba(227, 167, 47, 0.36);
   outline-offset: 2px;
+}
+
+textarea {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.description-field,
+.stat-block-wide,
+.weapon-assignment,
+.spell-assignment {
+  grid-column: 1 / -1;
+}
+
+.weapon-assignment,
+.spell-assignment {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.spell-assignment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.spell-choice {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 10px;
+}
+
+.spell-choice input {
+  width: auto;
+  min-height: 0;
 }
 
 .form-actions,
@@ -243,6 +314,17 @@ button:focus-visible {
 
 .compact-heading {
   margin-bottom: 10px;
+}
+
+.spell-panel .compact-heading,
+.weapon-panel .compact-heading {
+  align-items: center;
+}
+
+.spell-panel .compact-heading button,
+.weapon-panel .compact-heading button {
+  min-height: 34px;
+  padding: 0 10px;
 }
 
 .compact-heading span {
@@ -360,7 +442,14 @@ button:focus-visible {
 }
 
 .damage-form {
-  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.45fr) auto auto auto;
+  grid-template-columns:
+    minmax(180px, 1fr) minmax(120px, 0.45fr) auto minmax(160px, 0.8fr)
+    auto minmax(160px, 0.8fr) auto auto;
+}
+
+.condition-form {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto auto;
 }
 
 .roll-result {
@@ -380,6 +469,29 @@ button:focus-visible {
   align-items: center;
   gap: 16px;
   margin-bottom: 12px;
+}
+
+.heading-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.collapse-toggle {
+  min-width: 64px;
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.collapsible-list[hidden] {
+  display: none;
 }
 
 #combatantCount {
@@ -407,6 +519,15 @@ td {
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.table-detail {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: normal;
 }
 
 th {
@@ -449,7 +570,8 @@ tr.defeated-row {
 }
 
 .type-pill,
-.status-pill {
+.status-pill,
+.condition-pill {
   display: inline-flex;
   min-height: 28px;
   align-items: center;
@@ -459,6 +581,19 @@ tr.defeated-row {
   font-weight: 850;
   text-transform: capitalize;
   white-space: nowrap;
+}
+
+.condition-pills {
+  display: flex;
+  max-width: 280px;
+  flex-wrap: wrap;
+  gap: 6px;
+  white-space: normal;
+}
+
+.condition-pill {
+  background: #f1e8d8;
+  color: #5d4320;
 }
 
 .type-character {
@@ -523,7 +658,7 @@ tr.defeated-row {
     grid-template-columns: 1fr;
   }
 
-  .character-panel {
+  .side-stack {
     order: 2;
   }
 
@@ -543,7 +678,9 @@ tr.defeated-row {
   }
 
   .combatant-form,
+  .spell-form,
   .damage-form,
+  .condition-form,
   .turn-band {
     grid-template-columns: 1fr;
   }
@@ -559,6 +696,18 @@ tr.defeated-row {
     align-items: stretch;
   }
 
+  .section-heading {
+    align-items: flex-start;
+  }
+
+  .heading-actions {
+    flex: 1 1 auto;
+  }
+
+  .collapse-toggle {
+    min-width: 58px;
+  }
+
   .quick-item {
     grid-template-columns: 1fr;
   }
@@ -570,7 +719,8 @@ tr.defeated-row {
   .form-actions button,
   .encounter-actions button,
   .quick-actions button,
-  .damage-form button {
+  .damage-form button,
+  .condition-form button {
     flex: 1 1 150px;
   }
 }

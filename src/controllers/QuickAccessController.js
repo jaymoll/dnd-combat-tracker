@@ -1,4 +1,12 @@
-import { createInitialQuickAccess, createQuickAccessEntry, normalizeCreature } from "../models.js";
+import {
+  createInitialQuickAccess,
+  createQuickAccessEntry,
+  createSpellEntry,
+  createWeaponEntry,
+  normalizeCreature,
+  normalizeSpell,
+  normalizeWeapon,
+} from "../models.js";
 
 export class QuickAccessController {
   quickAccess = createInitialQuickAccess();
@@ -40,6 +48,28 @@ export class QuickAccessController {
     }
   }
 
+  async createSpell(spell) {
+    try {
+      this.quickAccess = await this.repository.createEntry("spell", createSpellEntry(spell));
+      this.setStatus("Server storage connected");
+      return true;
+    } catch {
+      this.setStatus("Save failed");
+      return false;
+    }
+  }
+
+  async createWeapon(weapon) {
+    try {
+      this.quickAccess = await this.repository.createEntry("weapon", createWeaponEntry(weapon));
+      this.setStatus("Server storage connected");
+      return true;
+    } catch {
+      this.setStatus("Save failed");
+      return false;
+    }
+  }
+
   async update(target, formCombatant) {
     if (!target) return false;
 
@@ -49,6 +79,28 @@ export class QuickAccessController {
         target.id,
         createQuickAccessEntry(formCombatant),
       );
+      this.setStatus("Server storage connected");
+      return true;
+    } catch {
+      this.setStatus("Save failed");
+      return false;
+    }
+  }
+
+  async updateSpell(id, spell) {
+    try {
+      this.quickAccess = await this.repository.updateEntry("spell", id, createSpellEntry(spell));
+      this.setStatus("Server storage connected");
+      return true;
+    } catch {
+      this.setStatus("Save failed");
+      return false;
+    }
+  }
+
+  async updateWeapon(id, weapon) {
+    try {
+      this.quickAccess = await this.repository.updateEntry("weapon", id, createWeaponEntry(weapon));
       this.setStatus("Server storage connected");
       return true;
     } catch {
@@ -76,6 +128,12 @@ export class QuickAccessController {
       monster: (library.monster ?? [])
         .map((entry) => this.normalizeEntry(entry, "monster"))
         .filter(Boolean),
+      spell: (library.spell ?? [])
+        .map((entry) => this.normalizeSpellEntry(entry))
+        .filter(Boolean),
+      weapon: (library.weapon ?? [])
+        .map((entry) => this.normalizeWeaponEntry(entry))
+        .filter(Boolean),
     };
   }
 
@@ -83,6 +141,20 @@ export class QuickAccessController {
     return normalizeCreature(
       entry,
       type,
+      (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
+  }
+
+  normalizeSpellEntry(entry) {
+    return normalizeSpell(
+      entry,
+      (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
+  }
+
+  normalizeWeaponEntry(entry) {
+    return normalizeWeapon(
+      entry,
       (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     );
   }

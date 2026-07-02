@@ -1,3 +1,5 @@
+import { getConditionLabel, hasConditionImmunity, normalizeConditionValue } from "../models.js";
+
 export class RosterController {
   constructor(combatantFactory) {
     this.combatantFactory = combatantFactory;
@@ -40,5 +42,39 @@ export class RosterController {
     const initialCount = state.combatants.length;
     state.combatants = state.combatants.filter((item) => item.id !== id);
     return state.combatants.length !== initialCount;
+  }
+
+  applyCondition(state, id, condition) {
+    const combatant = this.find(state, id);
+    const conditionValue = normalizeConditionValue(condition);
+    if (!combatant || combatant.isDefeated || !conditionValue) return null;
+
+    const label = getConditionLabel(conditionValue);
+    const conditions = combatant.conditions ?? [];
+
+    if (hasConditionImmunity(combatant, conditionValue)) {
+      return { message: `${combatant.name} is immune to ${label}.` };
+    }
+
+    if (conditions.includes(conditionValue)) {
+      return { message: `${combatant.name} already has ${label}.` };
+    }
+
+    combatant.conditions = [...conditions, conditionValue];
+    return { message: `${combatant.name} gains ${label}.` };
+  }
+
+  removeCondition(state, id, condition) {
+    const combatant = this.find(state, id);
+    const conditionValue = normalizeConditionValue(condition);
+    if (!combatant || !conditionValue) return null;
+
+    const conditions = combatant.conditions ?? [];
+    if (!conditions.includes(conditionValue)) {
+      return { message: `${combatant.name} does not have ${getConditionLabel(conditionValue)}.` };
+    }
+
+    combatant.conditions = conditions.filter((item) => item !== conditionValue);
+    return { message: `${combatant.name} loses ${getConditionLabel(conditionValue)}.` };
   }
 }
