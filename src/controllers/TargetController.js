@@ -12,14 +12,6 @@ export class TargetController {
     );
   }
 
-  ensureSelectedTarget(targets) {
-    if (!targets.some((combatant) => combatant.id === this.selectedId)) {
-      this.selectedId = targets[0]?.id ?? "";
-    }
-
-    return this.selectedId;
-  }
-
   select(id, state) {
     const targets = this.getLivingTargets(state);
     if (!targets.some((combatant) => combatant.id === id)) return false;

@@ -49,10 +49,6 @@ export class CombatTrackerApp {
     this.elements.startButton.addEventListener("click", () => this.startEncounter());
     this.elements.resetButton.addEventListener("click", () => this.resetEncounter());
     this.elements.damageForm.addEventListener("submit", (event) => this.applyDamage(event));
-    this.elements.conditionForm.addEventListener("submit", (event) => this.applyCondition(event));
-    this.elements.removeConditionButton.addEventListener("click", () => this.removeCondition());
-    this.elements.conditionTarget.addEventListener("change", () => this.renderer.renderTurnPanel(this.state));
-    this.elements.condition.addEventListener("change", () => this.renderer.renderTurnPanel(this.state));
     this.elements.rollAttackButton.addEventListener("click", () => this.rollAttack());
     this.elements.castSpellButton.addEventListener("click", () => this.castSpell());
     this.elements.nextTurnButton.addEventListener("click", () => this.nextTurn());
@@ -66,7 +62,6 @@ export class CombatTrackerApp {
     this.elements.cancelWeaponButton.addEventListener("click", () => this.cancelWeaponForm());
     this.elements.weaponForm.addEventListener("submit", (event) => this.upsertWeapon(event));
     this.elements.weaponDamageMin.addEventListener("input", () => this.weaponFormController.syncDamageMaxLimit());
-    this.elements.target.addEventListener("change", () => this.selectTargetFromInput());
     this.elements.type.addEventListener("change", () => this.handleCreatureTypeChange());
     this.elements.modal.addEventListener("cancel", () => this.formController.reset());
     this.elements.modal.addEventListener("click", (event) => this.handleModalBackdropClick(event));
@@ -243,10 +238,12 @@ export class CombatTrackerApp {
     event.preventDefault();
     if (!activeCombatantCanAct(this.state)) return;
 
-    this.targetController.set(this.elements.target.value);
+    const targetId = this.targetController.selectedId;
+    if (!targetId) return;
+
     const result = this.turnController.applyDamage(
       this.state,
-      this.elements.target.value,
+      targetId,
       clampNumber(this.elements.damage.value, 1),
     );
 
@@ -259,10 +256,12 @@ export class CombatTrackerApp {
   rollAttack() {
     if (!activeCombatantCanAct(this.state)) return;
 
-    this.targetController.set(this.elements.target.value);
+    const targetId = this.targetController.selectedId;
+    if (!targetId) return;
+
     const result = this.turnController.rollAttack(
       this.state,
-      this.elements.target.value,
+      targetId,
       this.elements.weapon.value,
     );
     if (result) this.finishAttack(result);
@@ -271,10 +270,12 @@ export class CombatTrackerApp {
   castSpell() {
     if (!activeCombatantCanAct(this.state)) return;
 
-    this.targetController.set(this.elements.target.value);
+    const targetId = this.targetController.selectedId;
+    if (!targetId) return;
+
     const result = this.turnController.castSpell(
       this.state,
-      this.elements.target.value,
+      targetId,
       this.elements.spell.value,
     );
     if (result) this.finishAttack(result);
@@ -289,29 +290,20 @@ export class CombatTrackerApp {
     this.render();
   }
 
-  applyCondition(event) {
-    event.preventDefault();
+  applyCondition(id, condition) {
     if (!this.state.hasStarted || this.state.isFinished) return;
 
-    const result = this.rosterController.applyCondition(
-      this.state,
-      this.elements.conditionTarget.value,
-      this.elements.condition.value,
-    );
+    const result = this.rosterController.applyCondition(this.state, id, condition);
     if (!result) return;
 
     this.elements.rollResult.textContent = result.message;
     this.render();
   }
 
-  removeCondition() {
+  removeCondition(id, condition) {
     if (!this.state.hasStarted || this.state.isFinished) return;
 
-    const result = this.rosterController.removeCondition(
-      this.state,
-      this.elements.conditionTarget.value,
-      this.elements.condition.value,
-    );
+    const result = this.rosterController.removeCondition(this.state, id, condition);
     if (!result) return;
 
     this.elements.rollResult.textContent = result.message;
@@ -323,11 +315,6 @@ export class CombatTrackerApp {
 
     this.targetController.clear();
     this.render();
-  }
-
-  selectTargetFromInput() {
-    this.targetController.set(this.elements.target.value);
-    this.renderer.renderRows(this.state);
   }
 
   handleCreatureTypeChange() {
@@ -374,10 +361,21 @@ export class CombatTrackerApp {
 
   handleCombatantRowClick(event) {
     const button = event.target.closest("button");
+    const conditionMenu = event.target.closest(".condition-menu");
+
+    if (button?.dataset.action === "apply-condition") {
+      this.applyCondition(button.dataset.id, button.dataset.condition);
+      return;
+    }
+
+    if (button?.dataset.action === "remove-condition") {
+      this.removeCondition(button.dataset.id, button.dataset.condition);
+      return;
+    }
 
     if (this.state.hasStarted) {
       const row = event.target.closest("tr[data-id]");
-      if (!row || button || !this.targetController.select(row.dataset.id, this.state)) return;
+      if (!row || button || conditionMenu || !this.targetController.select(row.dataset.id, this.state)) return;
 
       this.renderer.renderTurnPanel(this.state);
       this.renderer.renderRows(this.state);

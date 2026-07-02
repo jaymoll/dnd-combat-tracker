@@ -2,13 +2,10 @@ import { getActiveCombatant, sortedCombatants } from "../combat.js";
 import {
   canRenderTurnPanel,
   combatantRowMarkup,
-  conditionOptionMarkup,
-  conditionTargetOptionMarkup,
   quickAccessItemMarkup,
   spellOptionMarkup,
   spellQuickAccessItemMarkup,
   statusMarkup,
-  targetOptionMarkup,
   turnSummary,
   weaponOptionMarkup,
   weaponQuickAccessItemMarkup,
@@ -80,55 +77,38 @@ export class CombatTrackerRenderer {
 
     if (!canRenderTurnPanel(state)) {
       this.elements.activeName.textContent = "";
-      this.elements.attackCounter.textContent = "";
-      this.elements.target.innerHTML = "";
+      this.elements.selectedTargetText.textContent = "";
       this.elements.weapon.innerHTML = "";
       this.elements.spell.innerHTML = "";
-      this.elements.conditionTarget.innerHTML = "";
-      this.elements.condition.innerHTML = "";
-      this.elements.applyConditionButton.disabled = true;
-      this.elements.removeConditionButton.disabled = true;
       this.targetController.clear();
       this.elements.rollResult.textContent = "";
       return;
     }
 
-    const { active, attackCounter, conditions, livingCombatants } = turnSummary(state);
+    const { active, livingCombatants } = turnSummary(state);
     const targets = this.targetController.getLivingTargets(state);
-    const previousConditionTargetId = this.elements.conditionTarget.value || active.id;
-    const previousCondition = this.elements.condition.value;
+    let selectedTarget = targets.find((target) => target.id === this.targetController.selectedId);
 
-    this.elements.activeName.textContent = active.name;
-    this.elements.attackCounter.textContent = attackCounter;
-    this.elements.target.innerHTML = targets.map(targetOptionMarkup).join("");
-    this.elements.target.value = this.targetController.ensureSelectedTarget(targets);
-    this.elements.weapon.innerHTML = (active.weapons ?? []).map(weaponOptionMarkup).join("");
-    this.elements.spell.innerHTML = (active.spells ?? []).map(spellOptionMarkup).join("");
-    this.elements.conditionTarget.innerHTML = livingCombatants.map(conditionTargetOptionMarkup).join("");
-    this.elements.conditionTarget.value = livingCombatants.some(
-      (combatant) => combatant.id === previousConditionTargetId,
-    )
-      ? previousConditionTargetId
-      : active.id;
-    this.elements.condition.innerHTML = conditions.map(conditionOptionMarkup).join("");
-    if (conditions.some((condition) => condition.value === previousCondition)) {
-      this.elements.condition.value = previousCondition;
+    if (!selectedTarget) {
+      this.targetController.clear();
+      selectedTarget = null;
     }
 
-    const conditionTarget = livingCombatants.find(
-      (combatant) => combatant.id === this.elements.conditionTarget.value,
-    );
-    const selectedCondition = this.elements.condition.value;
-    const hasSelectedCondition = (conditionTarget?.conditions ?? []).includes(selectedCondition);
+    this.elements.activeName.textContent = active.name;
+    this.elements.selectedTargetText.textContent = selectedTarget
+      ? `Target: ${selectedTarget.name}`
+      : "Target: select from list";
+    this.elements.weapon.innerHTML = (active.weapons ?? []).map(weaponOptionMarkup).join("");
+    this.elements.spell.innerHTML = (active.spells ?? []).map(spellOptionMarkup).join("");
 
-    this.elements.damageForm.querySelector("button[type='submit']").disabled = targets.length === 0;
-    this.elements.rollAttackButton.disabled = targets.length === 0 || (active.weapons ?? []).length === 0;
+    const hasSelectedTarget = Boolean(selectedTarget);
+
+    this.elements.damageForm.querySelector("button[type='submit']").disabled = !hasSelectedTarget;
+    this.elements.rollAttackButton.disabled = !hasSelectedTarget || (active.weapons ?? []).length === 0;
     this.elements.weapon.disabled = this.elements.rollAttackButton.disabled;
-    this.elements.castSpellButton.disabled = targets.length === 0 || (active.spells ?? []).length === 0;
+    this.elements.castSpellButton.disabled = !hasSelectedTarget || (active.spells ?? []).length === 0;
     this.elements.spell.disabled = this.elements.castSpellButton.disabled;
     this.elements.nextTurnButton.disabled = targets.length === 0 && livingCombatants.length < 2;
-    this.elements.applyConditionButton.disabled = !conditionTarget || hasSelectedCondition;
-    this.elements.removeConditionButton.disabled = !conditionTarget || !hasSelectedCondition;
   }
 
   renderRows(state) {

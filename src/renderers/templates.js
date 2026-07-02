@@ -1,14 +1,13 @@
-import { activeCombatantCanAct, getActiveCombatant, getAttackLimit, sortedCombatants } from "../combat.js";
+import { activeCombatantCanAct, getActiveCombatant, sortedCombatants } from "../combat.js";
 import {
   CONDITION_OPTIONS,
-  getAbilityModifier,
   getConditionLabel,
   getAttackText,
   getDamageText,
   getMonsterStatBlockSummary,
   getWeaponText,
 } from "../models.js";
-import { escapeHtml, formatModifier } from "../utils.js";
+import { escapeHtml } from "../utils.js";
 
 export const statusMarkup = (state) => {
   if (state.isFinished) {
@@ -23,14 +22,15 @@ export const statusMarkup = (state) => {
   return "<strong>Setup phase</strong><span>Add combatants, HP, and initiative.</span>";
 };
 
+const quickAccessCr = (item) => {
+  const challengeRating = String(item.statBlock?.challengeRating ?? item.challengeRating ?? "").trim();
+  return challengeRating || "-";
+};
+
 export const quickAccessItemMarkup = (item, type, isDisabled) => `<article class="quick-item">
   <div>
     <strong>${escapeHtml(item.name)}</strong>
-    <span>${item.currentHp}/${item.maxHp} HP, AC ${item.armorClass}</span>
-    <span>${item.attacksPerTurn} attack${item.attacksPerTurn === 1 ? "" : "s"} per turn</span>
-    ${item.type === "monster" ? `<span>Initiative DEX ${formatModifier(getAbilityModifier(item.statBlock?.dexterity ?? 10))}</span>` : ""}
-    ${item.type === "monster" ? `<span>${escapeHtml(getMonsterStatBlockSummary(item))}</span>` : ""}
-    <span>${escapeHtml(getAttackText(item))}</span>
+    <span>HP ${item.currentHp}/${item.maxHp} / AC ${item.armorClass} / CR ${escapeHtml(quickAccessCr(item))}</span>
   </div>
   <div class="quick-actions">
     <button type="button" data-action="add-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Add</button>
@@ -63,20 +63,11 @@ export const weaponQuickAccessItemMarkup = (weapon, isDisabled) => `<article cla
   </div>
 </article>`;
 
-export const targetOptionMarkup = (combatant) =>
-  `<option value="${combatant.id}">${escapeHtml(combatant.name)} (AC ${combatant.armorClass}, ${combatant.currentHp}/${combatant.maxHp} HP)</option>`;
-
-export const conditionTargetOptionMarkup = (combatant) =>
-  `<option value="${combatant.id}">${escapeHtml(combatant.name)} (${combatant.currentHp}/${combatant.maxHp} HP)</option>`;
-
-export const conditionOptionMarkup = (condition) =>
-  `<option value="${condition.value}">${escapeHtml(condition.label)}</option>`;
-
 export const spellOptionMarkup = (spell, index) =>
-  `<option value="${index}">${escapeHtml(spell.name)} (${escapeHtml(getDamageText(spell))})</option>`;
+  `<option value="${index}">${escapeHtml(spell.name)}</option>`;
 
 export const weaponOptionMarkup = (weapon, index) =>
-  `<option value="${index}">${escapeHtml(weapon.name)} (${escapeHtml(getWeaponText(weapon))})</option>`;
+  `<option value="${index}">${escapeHtml(weapon.name)}</option>`;
 
 export const getStatusLabel = (combatant, activeId, state) => {
   if (combatant.isDefeated) return "Defeated";
@@ -84,14 +75,43 @@ export const getStatusLabel = (combatant, activeId, state) => {
   return "Ready";
 };
 
-export const conditionsMarkup = (combatant) => {
+const conditionMenuMarkup = (combatant, state) => {
+  if (!state.hasStarted || state.isFinished || combatant.isDefeated) return "";
+
+  const conditions = combatant.conditions ?? [];
+  const availableConditions = CONDITION_OPTIONS.filter((condition) => !conditions.includes(condition.value));
+
+  if (availableConditions.length === 0) return "";
+
+  return `<details class="condition-menu">
+    <summary aria-label="Add condition to ${escapeHtml(combatant.name)}">+</summary>
+    <div class="condition-menu-options">
+      ${availableConditions
+        .map(
+          (condition) =>
+            `<button type="button" data-action="apply-condition" data-id="${combatant.id}" data-condition="${condition.value}">${escapeHtml(condition.label)}</button>`,
+        )
+        .join("")}
+    </div>
+  </details>`;
+};
+
+export const conditionsMarkup = (combatant, state) => {
   const conditions = combatant.conditions ?? [];
 
-  if (conditions.length === 0) return `<span class="table-detail">-</span>`;
+  const conditionPills =
+    conditions.length === 0
+      ? `<span class="table-detail">-</span>`
+      : `<div class="condition-pills">${conditions
+          .map(
+            (condition) =>
+              `<span class="condition-pill">${escapeHtml(getConditionLabel(condition))}
+                <button type="button" data-action="remove-condition" data-id="${combatant.id}" data-condition="${condition}" aria-label="Remove ${escapeHtml(getConditionLabel(condition))} from ${escapeHtml(combatant.name)}">x</button>
+              </span>`,
+          )
+          .join("")}</div>`;
 
-  return `<div class="condition-pills">${conditions
-    .map((condition) => `<span class="condition-pill">${escapeHtml(getConditionLabel(condition))}</span>`)
-    .join("")}</div>`;
+  return `<div class="condition-cell">${conditionPills}${conditionMenuMarkup(combatant, state)}</div>`;
 };
 
 export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetId, state }) => {
@@ -123,7 +143,7 @@ export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetI
       }
     </td>
     <td>${combatant.damageDone}</td>
-    <td>${conditionsMarkup(combatant)}</td>
+    <td>${conditionsMarkup(combatant, state)}</td>
     <td><span class="status-pill status-${status.toLowerCase()}">${status}</span></td>
     <td class="setup-column">${actionButtons}</td>
   </tr>`;
@@ -135,8 +155,6 @@ export const turnSummary = (state) => {
   const active = getActiveCombatant(state);
   return {
     active,
-    attackCounter: active ? `Attacks ${state.attacksUsedThisTurn} / ${getAttackLimit(active)}` : "",
-    conditions: CONDITION_OPTIONS,
     livingCombatants: sortedCombatants(state).filter((combatant) => !combatant.isDefeated),
   };
 };
