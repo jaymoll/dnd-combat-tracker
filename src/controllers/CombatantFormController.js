@@ -65,9 +65,15 @@ export class CombatantFormController {
 
   open(mode = "add") {
     this.elements.modalTitle.textContent =
-      mode === "library" ? "Edit Saved Creature" : mode === "edit" ? "Edit Creature" : "Add Creature";
+      mode === "library-create"
+        ? "Add Saved Creature"
+        : mode === "library"
+          ? "Edit Saved Creature"
+          : mode === "edit"
+            ? "Edit Creature"
+            : "Add Creature";
     this.elements.saveButton.textContent = mode === "add" ? "Add" : "Save";
-    this.elements.saveQuickAccessButton.hidden = mode === "library";
+    this.elements.saveQuickAccessButton.hidden = mode === "library" || mode === "library-create";
     this.elements.modal.showModal();
     this.elements.name.focus();
   }
@@ -188,6 +194,14 @@ export class CombatantFormController {
     this.libraryEditTarget = { id: entry.id, type };
     this.fillCreatureFields({ ...entry, initiative: 0 });
     this.open("library");
+  }
+
+  prepareLibraryCreate(type) {
+    this.reset();
+    this.mode = "library-create";
+    this.elements.type.value = type;
+    this.elements.initiative.value = "0";
+    this.syncMonsterFields();
   }
 
   fillCreatureFields(creature) {
@@ -313,12 +327,13 @@ export class CombatantFormController {
   renderState(state) {
     const setupDisabled = state.hasStarted;
     this.elements.name.disabled = setupDisabled;
-    this.elements.type.disabled = setupDisabled || this.mode === "library";
+    this.elements.type.disabled = setupDisabled || this.mode === "library" || this.mode === "library-create";
     this.elements.maxHp.disabled = setupDisabled;
     this.elements.currentHp.disabled = setupDisabled;
     this.elements.initiative.disabled =
       setupDisabled ||
       this.mode === "library" ||
+      this.mode === "library-create" ||
       (this.elements.type.value === "monster" && !this.elements.combatantId.value);
     this.elements.attacksPerTurn.disabled = setupDisabled;
     this.elements.armorClass.disabled = setupDisabled;
@@ -336,9 +351,12 @@ export class CombatantFormController {
         input.disabled = setupDisabled;
       });
     this.elements.openModalButton.disabled = setupDisabled;
+    this.elements.libraryCreateButtons.forEach((button) => {
+      button.disabled = setupDisabled;
+    });
     this.elements.saveButton.disabled = setupDisabled;
     this.elements.saveQuickAccessButton.disabled = setupDisabled;
-    this.elements.saveQuickAccessButton.hidden = this.mode === "library";
+    this.elements.saveQuickAccessButton.hidden = this.mode === "library" || this.mode === "library-create";
     this.elements.cancelEditButton.disabled = setupDisabled;
 
     const canStart = !state.hasStarted && hasRequiredSides(state);

@@ -182,6 +182,37 @@ button:disabled {
   isolation: isolate;
 }
 
+.screen-tabs {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 4px;
+}
+
+.screen-tab {
+  min-width: 124px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.screen-tab.is-active {
+  background: linear-gradient(135deg, rgba(246, 241, 232, 0.96), rgba(88, 240, 209, 0.88));
+  color: var(--button-ink);
+  box-shadow: var(--shadow-tight);
+}
+
+.screen-view {
+  margin-top: 12px;
+}
+
+.screen-view[hidden] {
+  display: none;
+}
+
 .top-bar > *,
 .control-band > *,
 .turn-band > *,
@@ -192,31 +223,32 @@ button:disabled {
   z-index: 1;
 }
 
-.tracker-layout {
-  display: grid;
-  grid-template-areas: "left main right";
-  grid-template-columns: minmax(220px, 270px) minmax(0, 1fr) minmax(220px, 270px);
-  gap: 14px;
-  align-items: start;
-  margin-top: 10px;
-}
-
 .tracker-main {
-  grid-area: main;
   min-width: 0;
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 10px 14px;
+  align-items: start;
 }
 
-.side-stack {
-  grid-area: left;
+.encounter-stack {
+  min-width: 0;
   display: grid;
-  grid-template-columns: 1fr;
   gap: 10px;
 }
 
-.right-stack {
-  grid-area: right;
+.encounter-roster {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 0;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 .eyebrow {
@@ -557,6 +589,20 @@ textarea {
   flex: 1 1 84px;
   min-height: 28px;
   padding: 0 7px;
+}
+
+.management-screen .quick-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.management-screen .quick-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.management-screen .quick-actions button {
+  flex: 0 0 auto;
 }
 
 .quick-empty {
@@ -1006,18 +1052,13 @@ tr.defeated-row {
 }
 
 @media (max-width: 1120px) {
-  .tracker-layout {
-    grid-template-areas:
-      "main main"
-      "left right";
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  .tracker-main {
+    grid-template-columns: 1fr;
   }
 
   .damage-form {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
-
 }
 
 @media (max-width: 860px) {
@@ -1031,6 +1072,15 @@ tr.defeated-row {
     padding: 10px 2px 12px;
   }
 
+  .screen-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .screen-tab {
+    min-width: 0;
+  }
+
   .status-panel {
     justify-items: start;
     border-left: 0;
@@ -1039,20 +1089,12 @@ tr.defeated-row {
     text-align: left;
   }
 
-  .tracker-layout {
-    grid-template-areas:
-      "main"
-      "left"
-      "right";
-    grid-template-columns: 1fr;
-  }
-
-  .side-stack {
-    grid-template-columns: 1fr;
-  }
-
   .tracker-main {
     min-width: 0;
+  }
+
+  .management-grid {
+    grid-template-columns: 1fr;
   }
 
   .combatant-form,
@@ -1095,7 +1137,16 @@ tr.defeated-row {
     grid-template-columns: 1fr;
   }
 
+  .management-screen .quick-item {
+    grid-template-columns: 1fr;
+  }
+
   .quick-actions {
+    flex-wrap: wrap;
+  }
+
+  .management-screen .quick-actions {
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 

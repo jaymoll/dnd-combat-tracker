@@ -39,6 +39,7 @@ export class CombatTrackerRenderer {
       this.elements.characterQuickList,
       this.elements.emptyCharacterQuickList,
       state.hasStarted,
+      ["add"],
     );
     this.renderQuickAccessList(
       quickAccess.monster,
@@ -46,14 +47,31 @@ export class CombatTrackerRenderer {
       this.elements.monsterQuickList,
       this.elements.emptyMonsterQuickList,
       state.hasStarted,
+      ["add"],
+    );
+    this.renderQuickAccessList(
+      quickAccess.character,
+      "character",
+      this.elements.managementCharacterQuickList,
+      this.elements.emptyManagementCharacterQuickList,
+      state.hasStarted,
+      ["edit", "remove"],
+    );
+    this.renderQuickAccessList(
+      quickAccess.monster,
+      "monster",
+      this.elements.managementMonsterQuickList,
+      this.elements.emptyManagementMonsterQuickList,
+      state.hasStarted,
+      ["edit", "remove"],
     );
     this.renderSpellQuickAccessList(quickAccess.spell, state.hasStarted);
     this.renderWeaponQuickAccessList(quickAccess.weapon, state.hasStarted);
   }
 
-  renderQuickAccessList(items, type, listElement, emptyElement, isDisabled) {
+  renderQuickAccessList(items, type, listElement, emptyElement, isDisabled, actions) {
     emptyElement.hidden = items.length > 0;
-    listElement.innerHTML = items.map((item) => quickAccessItemMarkup(item, type, isDisabled)).join("");
+    listElement.innerHTML = items.map((item) => quickAccessItemMarkup(item, type, isDisabled, actions)).join("");
   }
 
   renderSpellQuickAccessList(items, isDisabled) {

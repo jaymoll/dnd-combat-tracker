@@ -42,6 +42,12 @@ export class CombatTrackerApp {
 
   bindEvents() {
     this.elements.form.addEventListener("submit", (event) => this.upsertCombatant(event));
+    this.elements.screenButtons.forEach((button) => {
+      button.addEventListener("click", () => this.showScreen(button.dataset.screenButton));
+    });
+    this.elements.libraryCreateButtons.forEach((button) => {
+      button.addEventListener("click", () => this.openLibraryCreatureModal(button.dataset.libraryCreate));
+    });
     this.elements.openModalButton.addEventListener("click", () => this.openAddCreatureModal());
     this.elements.closeModalButton.addEventListener("click", () => this.cancelForm());
     this.elements.saveQuickAccessButton.addEventListener("click", () => this.saveFormToQuickAccess());
@@ -75,6 +81,8 @@ export class CombatTrackerApp {
     });
     this.elements.characterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
     this.elements.monsterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
+    this.elements.managementCharacterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
+    this.elements.managementMonsterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
     this.elements.spellQuickList.addEventListener("click", (event) => this.handleSpellQuickAccessClick(event));
     this.elements.weaponQuickList.addEventListener("click", (event) => this.handleWeaponQuickAccessClick(event));
     this.elements.maxHp.addEventListener("input", () => this.syncCurrentHpLimit());
@@ -89,6 +97,14 @@ export class CombatTrackerApp {
     this.formController.reset();
     this.formController.renderState(this.state);
     this.formController.open("add");
+  }
+
+  openLibraryCreatureModal(type) {
+    if (this.state.hasStarted) return;
+
+    this.formController.prepareLibraryCreate(type);
+    this.formController.renderState(this.state);
+    this.formController.open("library-create");
   }
 
   cancelForm() {
@@ -131,6 +147,11 @@ export class CombatTrackerApp {
       return;
     }
 
+    if (this.formController.mode === "library-create") {
+      this.createQuickAccessEntry(formCombatant);
+      return;
+    }
+
     this.rosterController.upsertFromForm(this.state, formCombatant, this.elements.combatantId.value);
     this.formController.reset();
     this.formController.close();
@@ -144,6 +165,26 @@ export class CombatTrackerApp {
     this.formController.reset();
     this.formController.close();
     this.render();
+  }
+
+  async createQuickAccessEntry(formCombatant) {
+    const didSave = await this.quickAccessController.createFromForm(formCombatant);
+    if (!didSave) return;
+
+    this.formController.reset();
+    this.formController.close();
+    this.render();
+  }
+
+  showScreen(screenName) {
+    this.elements.screens.forEach((screen) => {
+      screen.hidden = screen.dataset.screen !== screenName;
+    });
+    this.elements.screenButtons.forEach((button) => {
+      const isActive = button.dataset.screenButton === screenName;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
   }
 
   async saveFormToQuickAccess() {

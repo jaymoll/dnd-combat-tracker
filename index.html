@@ -16,27 +16,171 @@
         <div class="status-panel" id="encounterStatus" aria-live="polite"></div>
       </section>
 
-      <div class="tracker-layout">
-        <div class="side-stack left-stack">
-          <aside class="quick-panel character-panel" aria-labelledby="character-library-title">
+      <nav class="screen-tabs" aria-label="App sections">
+        <button class="screen-tab is-active" type="button" data-screen-button="encounter" aria-pressed="true">
+          Encounter
+        </button>
+        <button class="screen-tab" type="button" data-screen-button="management" aria-pressed="false">
+          Management
+        </button>
+      </nav>
+
+      <div class="screen-view" id="encounterScreen" data-screen="encounter">
+        <div class="tracker-main">
+          <div class="encounter-stack">
+            <section class="control-band" aria-label="Encounter controls">
+              <div class="encounter-actions">
+                <button class="primary-action" type="button" id="openCombatantModalButton">Add Creature</button>
+                <button class="start-action" type="button" id="startEncounterButton">Start Encounter</button>
+                <button type="button" id="resetEncounterButton">Reset</button>
+                <p id="startRequirement" class="hint"></p>
+              </div>
+            </section>
+
+            <section class="turn-band" id="turnPanel" aria-label="Turn controls" hidden>
+              <div class="turn-summary">
+                <span class="label">Current turn</span>
+                <strong id="activeCombatantName"></strong>
+                <span id="selectedTargetText"></span>
+              </div>
+
+              <form id="damageForm" class="damage-form">
+                <label>
+                  <span>Damage</span>
+                  <input id="damageInput" type="number" min="1" step="1" required />
+                </label>
+
+                <button class="danger-action" type="submit">Apply Damage</button>
+                <label>
+                  <span>Weapon</span>
+                  <select id="weaponInput"></select>
+                </label>
+                <button class="start-action" type="button" id="rollAttackButton">Roll Weapon</button>
+                <label>
+                  <span>Spell</span>
+                  <select id="spellInput"></select>
+                </label>
+                <button class="start-action" type="button" id="castSpellButton">Cast Spell</button>
+                <button type="button" id="nextTurnButton">Next Turn</button>
+              </form>
+              <p class="roll-result" id="rollResult" aria-live="polite"></p>
+            </section>
+
+            <section class="list-band" aria-labelledby="combatants-title">
+              <div class="section-heading">
+                <div class="heading-copy">
+                  <h2 id="combatants-title">Initiative Order</h2>
+                  <span id="combatantCount"></span>
+                </div>
+                <button
+                  class="collapse-toggle"
+                  type="button"
+                  data-collapse-toggle="initiative-list-body"
+                  aria-controls="initiative-list-body"
+                  aria-expanded="true"
+                  aria-label="Collapse initiative order"
+                >Hide</button>
+              </div>
+
+              <div class="collapsible-list" id="initiative-list-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">AC</th>
+                        <th scope="col">HP</th>
+                        <th scope="col">Initiative</th>
+                        <th scope="col">Attacks</th>
+                        <th scope="col">Attack</th>
+                        <th scope="col">Damage Done</th>
+                        <th scope="col">Conditions</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="setup-column">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="combatantRows"></tbody>
+                  </table>
+                </div>
+
+                <p class="empty-state" id="emptyState">Add at least one character and one monster to begin.</p>
+              </div>
+            </section>
+          </div>
+
+          <section class="encounter-roster" aria-label="Saved creatures">
+            <aside class="quick-panel character-panel" aria-labelledby="character-roster-title">
+              <div class="section-heading compact-heading">
+                <div class="heading-copy">
+                  <h2 id="character-roster-title">Characters</h2>
+                  <span id="storageStatus">Loading server storage</span>
+                </div>
+                <button
+                  class="collapse-toggle"
+                  type="button"
+                  data-collapse-toggle="character-library-body"
+                  aria-controls="character-library-body"
+                  aria-expanded="true"
+                  aria-label="Collapse characters list"
+                >Hide</button>
+              </div>
+              <div class="collapsible-list" id="character-library-body">
+                <div id="characterQuickList" class="quick-items"></div>
+                <p id="emptyCharacterQuickList" class="quick-empty">No saved characters yet.</p>
+              </div>
+            </aside>
+
+            <aside class="quick-panel monster-panel" aria-labelledby="monster-roster-title">
+              <div class="section-heading compact-heading">
+                <h2 id="monster-roster-title">Monsters</h2>
+                <button
+                  class="collapse-toggle"
+                  type="button"
+                  data-collapse-toggle="monster-library-body"
+                  aria-controls="monster-library-body"
+                  aria-expanded="true"
+                  aria-label="Collapse monsters list"
+                >Hide</button>
+              </div>
+              <div class="collapsible-list" id="monster-library-body">
+                <div id="monsterQuickList" class="quick-items"></div>
+                <p id="emptyMonsterQuickList" class="quick-empty">No saved monsters yet.</p>
+              </div>
+            </aside>
+          </section>
+        </div>
+      </div>
+
+      <div class="screen-view management-screen" id="managementScreen" data-screen="management" hidden>
+        <section class="management-grid" aria-label="Library management">
+          <aside class="quick-panel character-panel" aria-labelledby="management-character-title">
             <div class="section-heading compact-heading">
               <div class="heading-copy">
-                <h2 id="character-library-title">Characters</h2>
-                <span id="storageStatus">Loading server storage</span>
+                <h2 id="management-character-title">Characters</h2>
+                <span>Saved player roster</span>
               </div>
-              <button
-                class="collapse-toggle"
-                type="button"
-                data-collapse-toggle="character-library-body"
-                aria-controls="character-library-body"
-                aria-expanded="true"
-                aria-label="Collapse characters list"
-              >Hide</button>
+              <div class="heading-actions">
+                <button type="button" data-library-create="character">Add Character</button>
+              </div>
             </div>
-            <div class="collapsible-list" id="character-library-body">
-              <div id="characterQuickList" class="quick-items"></div>
-              <p id="emptyCharacterQuickList" class="quick-empty">No saved characters yet.</p>
+            <div id="managementCharacterQuickList" class="quick-items"></div>
+            <p id="emptyManagementCharacterQuickList" class="quick-empty">No saved characters yet.</p>
+          </aside>
+
+          <aside class="quick-panel monster-panel" aria-labelledby="management-monster-title">
+            <div class="section-heading compact-heading">
+              <div class="heading-copy">
+                <h2 id="management-monster-title">Monsters</h2>
+                <span>Saved encounter threats</span>
+              </div>
+              <div class="heading-actions">
+                <button type="button" data-library-create="monster">Add Monster</button>
+              </div>
             </div>
+            <div id="managementMonsterQuickList" class="quick-items"></div>
+            <p id="emptyManagementMonsterQuickList" class="quick-empty">No saved monsters yet.</p>
           </aside>
 
           <aside class="quick-panel spell-panel" aria-labelledby="spell-library-title">
@@ -44,123 +188,10 @@
               <h2 id="spell-library-title">Spells</h2>
               <div class="heading-actions">
                 <button type="button" id="openSpellModalButton">Add Spell</button>
-                <button
-                  class="collapse-toggle"
-                  type="button"
-                  data-collapse-toggle="spell-library-body"
-                  aria-controls="spell-library-body"
-                  aria-expanded="true"
-                  aria-label="Collapse spells list"
-                >Hide</button>
               </div>
             </div>
-            <div class="collapsible-list" id="spell-library-body">
-              <div id="spellQuickList" class="quick-items"></div>
-              <p id="emptySpellQuickList" class="quick-empty">No saved spells yet.</p>
-            </div>
-          </aside>
-        </div>
-
-        <div class="tracker-main">
-          <section class="control-band" aria-label="Encounter controls">
-            <div class="encounter-actions">
-              <button class="primary-action" type="button" id="openCombatantModalButton">Add Creature</button>
-              <button class="start-action" type="button" id="startEncounterButton">Start Encounter</button>
-              <button type="button" id="resetEncounterButton">Reset</button>
-              <p id="startRequirement" class="hint"></p>
-            </div>
-          </section>
-
-          <section class="turn-band" id="turnPanel" aria-label="Turn controls" hidden>
-            <div class="turn-summary">
-              <span class="label">Current turn</span>
-              <strong id="activeCombatantName"></strong>
-              <span id="selectedTargetText"></span>
-            </div>
-
-            <form id="damageForm" class="damage-form">
-              <label>
-                <span>Damage</span>
-                <input id="damageInput" type="number" min="1" step="1" required />
-              </label>
-
-              <button class="danger-action" type="submit">Apply Damage</button>
-              <label>
-                <span>Weapon</span>
-                <select id="weaponInput"></select>
-              </label>
-              <button class="start-action" type="button" id="rollAttackButton">Roll Weapon</button>
-              <label>
-                <span>Spell</span>
-                <select id="spellInput"></select>
-              </label>
-              <button class="start-action" type="button" id="castSpellButton">Cast Spell</button>
-              <button type="button" id="nextTurnButton">Next Turn</button>
-            </form>
-            <p class="roll-result" id="rollResult" aria-live="polite"></p>
-          </section>
-
-          <section class="list-band" aria-labelledby="combatants-title">
-            <div class="section-heading">
-              <div class="heading-copy">
-                <h2 id="combatants-title">Initiative Order</h2>
-                <span id="combatantCount"></span>
-              </div>
-              <button
-                class="collapse-toggle"
-                type="button"
-                data-collapse-toggle="initiative-list-body"
-                aria-controls="initiative-list-body"
-                aria-expanded="true"
-                aria-label="Collapse initiative order"
-              >Hide</button>
-            </div>
-
-            <div class="collapsible-list" id="initiative-list-body">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Type</th>
-                      <th scope="col">AC</th>
-                      <th scope="col">HP</th>
-                      <th scope="col">Initiative</th>
-                      <th scope="col">Attacks</th>
-                      <th scope="col">Attack</th>
-                      <th scope="col">Damage Done</th>
-                      <th scope="col">Conditions</th>
-                      <th scope="col">Status</th>
-                      <th scope="col" class="setup-column">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="combatantRows"></tbody>
-                </table>
-              </div>
-
-              <p class="empty-state" id="emptyState">Add at least one character and one monster to begin.</p>
-            </div>
-          </section>
-        </div>
-
-        <div class="side-stack right-stack">
-          <aside class="quick-panel monster-panel" aria-labelledby="monster-library-title">
-            <div class="section-heading compact-heading">
-              <h2 id="monster-library-title">Monsters</h2>
-              <button
-                class="collapse-toggle"
-                type="button"
-                data-collapse-toggle="monster-library-body"
-                aria-controls="monster-library-body"
-                aria-expanded="true"
-                aria-label="Collapse monsters list"
-              >Hide</button>
-            </div>
-            <div class="collapsible-list" id="monster-library-body">
-              <div id="monsterQuickList" class="quick-items"></div>
-              <p id="emptyMonsterQuickList" class="quick-empty">No saved monsters yet.</p>
-            </div>
+            <div id="spellQuickList" class="quick-items"></div>
+            <p id="emptySpellQuickList" class="quick-empty">No saved spells yet.</p>
           </aside>
 
           <aside class="quick-panel weapon-panel" aria-labelledby="weapon-library-title">
@@ -168,22 +199,12 @@
               <h2 id="weapon-library-title">Weapons</h2>
               <div class="heading-actions">
                 <button type="button" id="openWeaponModalButton">Add Weapon</button>
-                <button
-                  class="collapse-toggle"
-                  type="button"
-                  data-collapse-toggle="weapon-library-body"
-                  aria-controls="weapon-library-body"
-                  aria-expanded="true"
-                  aria-label="Collapse weapons list"
-                >Hide</button>
               </div>
             </div>
-            <div class="collapsible-list" id="weapon-library-body">
-              <div id="weaponQuickList" class="quick-items"></div>
-              <p id="emptyWeaponQuickList" class="quick-empty">No saved weapons yet.</p>
-            </div>
+            <div id="weaponQuickList" class="quick-items"></div>
+            <p id="emptyWeaponQuickList" class="quick-empty">No saved weapons yet.</p>
           </aside>
-        </div>
+        </section>
       </div>
     </main>
 

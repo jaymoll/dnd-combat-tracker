@@ -27,15 +27,15 @@ const quickAccessCr = (item) => {
   return challengeRating || "-";
 };
 
-export const quickAccessItemMarkup = (item, type, isDisabled) => `<article class="quick-item">
+export const quickAccessItemMarkup = (item, type, isDisabled, actions = ["add", "edit", "remove"]) => `<article class="quick-item">
   <div>
     <strong>${escapeHtml(item.name)}</strong>
     <span>HP ${item.currentHp}/${item.maxHp} / AC ${item.armorClass} / CR ${escapeHtml(quickAccessCr(item))}</span>
   </div>
   <div class="quick-actions">
-    <button type="button" data-action="add-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Add</button>
-    <button type="button" data-action="edit-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Edit</button>
-    <button type="button" data-action="remove-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Remove</button>
+    ${actions.includes("add") ? `<button type="button" data-action="add-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Add</button>` : ""}
+    ${actions.includes("edit") ? `<button type="button" data-action="edit-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Edit</button>` : ""}
+    ${actions.includes("remove") ? `<button type="button" data-action="remove-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Remove</button>` : ""}
   </div>
 </article>`;
 
