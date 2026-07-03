@@ -8,10 +8,15 @@ import {
   getNextLivingIndex,
   hasRequiredSides,
 } from "../combat.js";
-import { getAttackBonus } from "../models.js";
+import { DEFAULT_SPELL_RANGE_FEET, DEFAULT_WEAPON_RANGE_FEET, getAttackBonus } from "../models.js";
 import { formatModifier, rollInclusive } from "../utils.js";
+import { BattleMapGeometry } from "./BattleMapGeometry.js";
 
 export class TurnController {
+  constructor(geometry = new BattleMapGeometry()) {
+    this.geometry = geometry;
+  }
+
   prepareForRender(state) {
     state.combatants.sort(byInitiative);
     checkEncounterEnd(state);
@@ -64,6 +69,17 @@ export class TurnController {
     const weapon = context?.attacker.weapons?.[Number(weaponIndex)];
     if (!weapon) return null;
 
+    const rangeState = this.getAttackRangeState(
+      state,
+      context.attacker,
+      context.target,
+      weapon,
+      DEFAULT_WEAPON_RANGE_FEET,
+    );
+    if (!rangeState.canAttack) {
+      return this.createOutOfRangeResult(context.attacker, context.target, weapon, rangeState);
+    }
+
     const attackBonus = getAttackBonus(context.attacker, weapon.ability);
     const roll = this.rollToHit(attackBonus);
     const attackLabel = `${context.attacker.name} attacks with ${weapon.name}`;
@@ -93,6 +109,17 @@ export class TurnController {
     const spell = context?.attacker.spells?.[Number(spellIndex)];
     if (!spell) return null;
 
+    const rangeState = this.getAttackRangeState(
+      state,
+      context.attacker,
+      context.target,
+      spell,
+      DEFAULT_SPELL_RANGE_FEET,
+    );
+    if (!rangeState.canAttack) {
+      return this.createOutOfRangeResult(context.attacker, context.target, spell, rangeState);
+    }
+
     const spellAbility = context.attacker.statBlock?.spellcastingAbility ?? "intelligence";
     const attackBonus = getAttackBonus(context.attacker, spellAbility);
     const roll = this.rollToHit(attackBonus);
@@ -120,6 +147,43 @@ export class TurnController {
 
     if (!active || !attacker || !target || target.isDefeated) return null;
     return { active, attacker, target };
+  }
+
+  getAttackRangeState(state, attacker, target, attack, defaultRangeFeet = 0) {
+    const rangeFeet = attack?.rangeFeet ?? defaultRangeFeet;
+
+    if (!attacker || !target || !attack) {
+      return {
+        canAttack: false,
+        distanceFeet: null,
+        rangeFeet,
+        isRangeChecked: false,
+      };
+    }
+
+    if (attacker.type !== "monster") {
+      return {
+        canAttack: true,
+        distanceFeet: null,
+        rangeFeet,
+        isRangeChecked: false,
+      };
+    }
+
+    const distanceFeet = this.getCombatantDistanceFeet(state, attacker, target);
+
+    return {
+      canAttack: distanceFeet <= rangeFeet,
+      distanceFeet,
+      rangeFeet,
+      isRangeChecked: true,
+    };
+  }
+
+  getCombatantDistanceFeet(state, attacker, target) {
+    const attackerPosition = this.geometry.clampPosition(attacker.battleMapPosition, state.battleMap);
+    const targetPosition = this.geometry.clampPosition(target.battleMapPosition, state.battleMap);
+    return this.geometry.getDistanceFeet(state.battleMap, attackerPosition, targetPosition);
   }
 
   rollToHit(bonus) {
@@ -151,6 +215,13 @@ export class TurnController {
 
   createHitMessage(label, roll, target, damage, bonusText) {
     return `${label}, rolling ${this.formatAttackRoll(roll)}, hit AC ${target.armorClass}, and dealt ${damage.actualDamage} damage (${damage.damageRoll} ${bonusText}).`;
+  }
+
+  createOutOfRangeResult(attacker, target, attack, rangeState) {
+    return {
+      message: `${attacker.name} cannot use ${attack.name} on ${target.name}: target is ${rangeState.distanceFeet} ft away and range is ${rangeState.rangeFeet} ft.`,
+      shouldClearTarget: false,
+    };
   }
 
   formatAttackRoll(roll) {

@@ -1,4 +1,5 @@
 import { DamageRangeFields } from "./DamageRangeFields.js";
+import { clampNumber } from "../utils.js";
 
 export class LibraryAttackFormController {
   constructor({
@@ -16,6 +17,8 @@ export class LibraryAttackFormController {
     addButtonText,
     editButtonText,
     damageInputs,
+    rangeInput,
+    defaultRangeFeet,
     readExtra = () => ({}),
     resetExtra = () => {},
     fillExtra = () => {},
@@ -34,6 +37,8 @@ export class LibraryAttackFormController {
     this.addButtonText = addButtonText;
     this.editButtonText = editButtonText;
     this.damageFields = new DamageRangeFields(damageInputs);
+    this.rangeInput = rangeInput;
+    this.defaultRangeFeet = defaultRangeFeet;
     this.readExtra = readExtra;
     this.resetExtra = resetExtra;
     this.fillExtra = fillExtra;
@@ -60,6 +65,7 @@ export class LibraryAttackFormController {
     return {
       name,
       description: this.descriptionInput.value.trim(),
+      rangeFeet: clampNumber(this.rangeInput.value, 0),
       ...this.readExtra(),
       ...this.damageFields.read(),
     };
@@ -69,6 +75,7 @@ export class LibraryAttackFormController {
     this.form.reset();
     this.idInput.value = "";
     this.resetExtra();
+    this.rangeInput.value = String(this.defaultRangeFeet);
     this.damageFields.reset();
     this.saveButton.textContent = this.addButtonText;
   }
@@ -77,6 +84,7 @@ export class LibraryAttackFormController {
     this.idInput.value = item.id;
     this.nameInput.value = item.name;
     this.descriptionInput.value = item.description;
+    this.rangeInput.value = item.rangeFeet;
     this.fillExtra(item);
     this.damageFields.fill(item);
     this.open("edit");

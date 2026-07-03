@@ -46,6 +46,7 @@ export class CombatTrackerApp {
       this.spellFormController,
       this.weaponFormController,
       this.battleMapController,
+      this.turnController,
     );
   }
 
@@ -83,16 +84,6 @@ export class CombatTrackerApp {
     this.elements.battleMapBoard.addEventListener("pointerdown", (event) =>
       this.battleMapController.startDrag(event, this.state),
     );
-    this.elements.battleMapDamageForm.addEventListener("submit", (event) =>
-      this.applyDamage(event, this.elements.battleMapDamage),
-    );
-    this.elements.battleMapRollAttackButton.addEventListener("click", () =>
-      this.rollAttack(this.elements.battleMapWeapon),
-    );
-    this.elements.battleMapCastSpellButton.addEventListener("click", () =>
-      this.castSpell(this.elements.battleMapSpell),
-    );
-    this.elements.battleMapNextTurnButton.addEventListener("click", () => this.nextTurn());
   }
 
   bindCreatureFormEvents() {
@@ -250,6 +241,7 @@ export class CombatTrackerApp {
 
   showScreen(screenName, { updatePath = true } = {}) {
     const nextScreenName = screenRoutes[screenName] ? screenName : "encounter";
+    this.moveTurnPanel(nextScreenName);
 
     this.elements.screens.forEach((screen) => {
       screen.hidden = screen.dataset.screen !== nextScreenName;
@@ -266,6 +258,17 @@ export class CombatTrackerApp {
         window.history.pushState({}, "", nextPath);
       }
     }
+  }
+
+  moveTurnPanel(screenName) {
+    const slot = screenName === "battle-map"
+      ? this.elements.battleMapTurnPanelSlot
+      : this.elements.encounterTurnPanelSlot;
+
+    if (!slot || this.elements.turnPanel.parentElement === slot) return;
+
+    this.elements.turnPanel.classList.toggle("battle-map-turn-band", screenName === "battle-map");
+    slot.append(this.elements.turnPanel);
   }
 
   getScreenFromPath() {
@@ -394,7 +397,6 @@ export class CombatTrackerApp {
     if (!result) return;
 
     this.elements.damage.value = "";
-    this.elements.battleMapDamage.value = "";
     this.finishAttack(result);
   }
 
@@ -438,7 +440,6 @@ export class CombatTrackerApp {
 
   setRollResult(message) {
     this.elements.rollResult.textContent = message;
-    this.elements.battleMapRollResult.textContent = message;
   }
 
   applyCondition(id, condition) {

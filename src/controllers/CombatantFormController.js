@@ -19,12 +19,12 @@ export class CombatantFormController {
     this.spellAssignments = new AssignmentListController({
       listElement: elements.spellAssignmentList,
       emptyElement: elements.emptySpellAssignmentList,
-      keyFields: ["name", "damageMin", "damageMax", "damageBonus"],
+      keyFields: ["name", "rangeFeet", "damageMin", "damageMax", "damageBonus"],
     });
     this.weaponAssignments = new AssignmentListController({
       listElement: elements.weaponAssignmentList,
       emptyElement: elements.emptyWeaponAssignmentList,
-      keyFields: ["name", "ability", "damageMin", "damageMax", "damageBonus"],
+      keyFields: ["name", "ability", "rangeFeet", "damageMin", "damageMax", "damageBonus"],
     });
   }
 

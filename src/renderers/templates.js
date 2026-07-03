@@ -64,11 +64,14 @@ export const weaponQuickAccessItemMarkup = (weapon, isDisabled) => `<article cla
   </div>
 </article>`;
 
-export const spellOptionMarkup = (spell, index) =>
-  `<option value="${index}">${escapeHtml(spell.name)}</option>`;
+export const spellOptionMarkup = (spell, index, { disabled = false, rangeFeet = spell.rangeFeet } = {}) =>
+  `<option value="${index}" ${disabled ? "disabled" : ""}>${escapeHtml(getAttackOptionLabel(spell, disabled, rangeFeet))}</option>`;
 
-export const weaponOptionMarkup = (weapon, index) =>
-  `<option value="${index}">${escapeHtml(weapon.name)}</option>`;
+export const weaponOptionMarkup = (weapon, index, { disabled = false, rangeFeet = weapon.rangeFeet } = {}) =>
+  `<option value="${index}" ${disabled ? "disabled" : ""}>${escapeHtml(getAttackOptionLabel(weapon, disabled, rangeFeet))}</option>`;
+
+const getAttackOptionLabel = (attack, disabled, rangeFeet) =>
+  `${attack.name} (${rangeFeet} ft${disabled ? ", out of range" : ""})`;
 
 const getStatusLabel = (combatant, activeId, state) => {
   if (combatant.isDefeated) return "Defeated";

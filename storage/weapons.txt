@@ -3,6 +3,7 @@
     "name": "Scimitar",
     "description": "A light curved blade.",
     "ability": "dexterity",
+    "rangeFeet": 5,
     "damageMin": 1,
     "damageMax": 8,
     "damageBonus": 0
@@ -11,6 +12,7 @@
     "name": "Greataxe",
     "description": "A heavy axe swung with brute force.",
     "ability": "strength",
+    "rangeFeet": 5,
     "damageMin": 2,
     "damageMax": 12,
     "damageBonus": 0
@@ -19,6 +21,7 @@
     "name": "Shortbow",
     "description": "A compact bow for ranged attacks.",
     "ability": "dexterity",
+    "rangeFeet": 80,
     "damageMin": 2,
     "damageMax": 8,
     "damageBonus": 0
@@ -27,6 +30,7 @@
     "name": "Dagger",
     "description": "A small blade that can be thrown or used up close.",
     "ability": "dexterity",
+    "rangeFeet": 5,
     "damageMin": 1,
     "damageMax": 4,
     "damageBonus": 0

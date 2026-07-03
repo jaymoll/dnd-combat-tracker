@@ -5,6 +5,7 @@
     "currentHp": 7,
     "armorClass": 15,
     "attacksPerTurn": 1,
+    "movementFeet": 30,
     "statBlock": {
       "size": "Small",
       "creatureType": "humanoid",
@@ -37,6 +38,7 @@
         "name": "Scimitar",
         "description": "A light curved blade.",
         "ability": "dexterity",
+        "rangeFeet": 5,
         "damageMin": 1,
         "damageMax": 8,
         "damageBonus": 0
@@ -49,6 +51,7 @@
     "currentHp": 15,
     "armorClass": 13,
     "attacksPerTurn": 2,
+    "movementFeet": 30,
     "statBlock": {
       "size": "Medium",
       "creatureType": "humanoid",
@@ -81,6 +84,7 @@
         "name": "Greataxe",
         "description": "A heavy axe swung with brute force.",
         "ability": "strength",
+        "rangeFeet": 5,
         "damageMin": 2,
         "damageMax": 12,
         "damageBonus": 0
@@ -93,6 +97,7 @@
     "currentHp": 13,
     "armorClass": 13,
     "attacksPerTurn": 1,
+    "movementFeet": 30,
     "statBlock": {
       "size": "Medium",
       "creatureType": "undead",
@@ -125,6 +130,7 @@
         "name": "Shortbow",
         "description": "A compact bow for ranged attacks.",
         "ability": "dexterity",
+        "rangeFeet": 80,
         "damageMin": 2,
         "damageMax": 8,
         "damageBonus": 0
@@ -137,6 +143,7 @@
     "currentHp": 12,
     "armorClass": 12,
     "attacksPerTurn": 1,
+    "movementFeet": 30,
     "statBlock": {
       "size": "Small",
       "creatureType": "humanoid",
@@ -167,6 +174,7 @@
       {
         "name": "Fire Bolt",
         "description": "A ranged spell attack that hurls a mote of fire.",
+        "rangeFeet": 120,
         "damageMin": 1,
         "damageMax": 10,
         "damageBonus": 0
@@ -177,6 +185,7 @@
         "name": "Dagger",
         "description": "A small blade that can be thrown or used up close.",
         "ability": "dexterity",
+        "rangeFeet": 5,
         "damageMin": 1,
         "damageMax": 4,
         "damageBonus": 0

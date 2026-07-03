@@ -2,6 +2,7 @@
   {
     "name": "Fire Bolt",
     "description": "A ranged spell attack that hurls a mote of fire.",
+    "rangeFeet": 120,
     "damageMin": 1,
     "damageMax": 10,
     "damageBonus": 0

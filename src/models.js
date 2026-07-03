@@ -99,6 +99,10 @@ export const DEFAULT_MOVEMENT_FEET = 30;
 
 export const TILE_FEET = 5;
 
+export const DEFAULT_WEAPON_RANGE_FEET = 5;
+
+export const DEFAULT_SPELL_RANGE_FEET = 60;
+
 export const normalizeConditionValue = (condition) => {
   const value = String(condition?.value ?? condition ?? "").trim().toLowerCase();
   return conditionValues.has(value) ? value : "";
@@ -162,12 +166,16 @@ const normalizeDamageRange = (entry) => {
   };
 };
 
+const normalizeAttackRange = (entry, fallback) =>
+  clampNumber(entry.rangeFeet ?? entry.range ?? fallback, 0);
+
 export const normalizeSpell = (entry, idFactory, index = 0) => {
   if (!entry || typeof entry !== "object") return null;
 
   const name = String(entry.name ?? "").trim();
   const description = String(entry.description ?? "").trim();
   const damage = normalizeDamageRange(entry);
+  const rangeFeet = normalizeAttackRange(entry, DEFAULT_SPELL_RANGE_FEET);
 
   if (!name) return null;
 
@@ -175,6 +183,7 @@ export const normalizeSpell = (entry, idFactory, index = 0) => {
     id: String(entry.id || idFactory("spell", index)),
     name,
     description,
+    rangeFeet,
     ...damage,
   };
 };
@@ -187,6 +196,7 @@ export const normalizeWeapon = (entry, idFactory, index = 0) => {
   const rawAbility = entry.ability === "agility" ? "dexterity" : entry.ability;
   const ability = ["strength", "dexterity"].includes(rawAbility) ? rawAbility : "strength";
   const damage = normalizeDamageRange(entry);
+  const rangeFeet = normalizeAttackRange(entry, DEFAULT_WEAPON_RANGE_FEET);
 
   if (!name) return null;
 
@@ -195,6 +205,7 @@ export const normalizeWeapon = (entry, idFactory, index = 0) => {
     name,
     description,
     ability,
+    rangeFeet,
     ...damage,
   };
 };
@@ -244,7 +255,8 @@ export const normalizeCreature = (entry, type, idFactory) => {
   };
 };
 
-const createDamageEntry = (attack) => ({
+const createDamageEntry = (attack, defaultRangeFeet) => ({
+  rangeFeet: normalizeAttackRange(attack, defaultRangeFeet),
   damageMin: attack.damageMin,
   damageMax: attack.damageMax,
   damageBonus: attack.damageBonus,
@@ -253,14 +265,14 @@ const createDamageEntry = (attack) => ({
 export const createSpellEntry = (spell) => ({
   name: spell.name,
   description: spell.description,
-  ...createDamageEntry(spell),
+  ...createDamageEntry(spell, DEFAULT_SPELL_RANGE_FEET),
 });
 
 export const createWeaponEntry = (weapon) => ({
   name: weapon.name,
   description: weapon.description,
   ability: weapon.ability,
-  ...createDamageEntry(weapon),
+  ...createDamageEntry(weapon, DEFAULT_WEAPON_RANGE_FEET),
 });
 
 export const createCreatureEntry = (creature) => ({
@@ -289,7 +301,7 @@ export const getMonsterStatBlockSummary = (monster) => {
 
 export const getDamageText = (attack) => {
   const bonus = attack.damageBonus === 0 ? "" : ` ${formatModifier(attack.damageBonus)}`;
-  return `${attack.damageMin}-${attack.damageMax}${bonus}`;
+  return `${attack.damageMin}-${attack.damageMax}${bonus}, ${attack.rangeFeet} ft`;
 };
 
 export const getWeaponText = (weapon) =>

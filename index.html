@@ -43,34 +43,36 @@
               </div>
             </section>
 
-            <section class="turn-band" id="turnPanel" aria-label="Turn controls" hidden>
-              <div class="turn-summary">
-                <span class="label">Current turn</span>
-                <strong id="activeCombatantName"></strong>
-                <span id="selectedTargetText"></span>
-              </div>
+            <div id="encounterTurnPanelSlot">
+              <section class="turn-band" id="turnPanel" aria-label="Turn controls" hidden>
+                <div class="turn-summary">
+                  <span class="label">Current turn</span>
+                  <strong id="activeCombatantName"></strong>
+                  <span id="selectedTargetText"></span>
+                </div>
 
-              <form id="damageForm" class="damage-form">
-                <label>
-                  <span>Damage</span>
-                  <input id="damageInput" type="number" min="1" step="1" required />
-                </label>
+                <form id="damageForm" class="damage-form">
+                  <label>
+                    <span>Damage</span>
+                    <input id="damageInput" type="number" min="1" step="1" required />
+                  </label>
 
-                <button class="danger-action" type="submit">Apply Damage</button>
-                <label>
-                  <span>Weapon</span>
-                  <select id="weaponInput"></select>
-                </label>
-                <button class="start-action" type="button" id="rollAttackButton">Roll Weapon</button>
-                <label>
-                  <span>Spell</span>
-                  <select id="spellInput"></select>
-                </label>
-                <button class="start-action" type="button" id="castSpellButton">Cast Spell</button>
-                <button type="button" id="nextTurnButton">Next Turn</button>
-              </form>
-              <p class="roll-result" id="rollResult" aria-live="polite"></p>
-            </section>
+                  <button class="danger-action" type="submit">Apply Damage</button>
+                  <label>
+                    <span>Weapon</span>
+                    <select id="weaponInput"></select>
+                  </label>
+                  <button class="start-action" type="button" id="rollAttackButton">Roll Weapon</button>
+                  <label>
+                    <span>Spell</span>
+                    <select id="spellInput"></select>
+                  </label>
+                  <button class="start-action" type="button" id="castSpellButton">Cast Spell</button>
+                  <button type="button" id="nextTurnButton">Next Turn</button>
+                </form>
+                <p class="roll-result" id="rollResult" aria-live="polite"></p>
+              </section>
+            </div>
 
             <section class="list-band" aria-labelledby="combatants-title">
               <div class="section-heading">
@@ -187,34 +189,7 @@
             </div>
           </div>
 
-          <section class="turn-band battle-map-turn-band" id="battleMapTurnPanel" aria-label="Battle map turn controls" hidden>
-            <div class="turn-summary">
-              <span class="label">Current turn</span>
-              <strong id="battleMapActiveCombatantName"></strong>
-              <span id="battleMapSelectedTargetText"></span>
-            </div>
-
-            <form id="battleMapDamageForm" class="damage-form">
-              <label>
-                <span>Damage</span>
-                <input id="battleMapDamageInput" type="number" min="1" step="1" required />
-              </label>
-
-              <button class="danger-action" type="submit">Apply Damage</button>
-              <label>
-                <span>Weapon</span>
-                <select id="battleMapWeaponInput"></select>
-              </label>
-              <button class="start-action" type="button" id="battleMapRollAttackButton">Roll Weapon</button>
-              <label>
-                <span>Spell</span>
-                <select id="battleMapSpellInput"></select>
-              </label>
-              <button class="start-action" type="button" id="battleMapCastSpellButton">Cast Spell</button>
-              <button type="button" id="battleMapNextTurnButton">Next Turn</button>
-            </form>
-            <p class="roll-result" id="battleMapRollResult" aria-live="polite"></p>
-          </section>
+          <div id="battleMapTurnPanelSlot"></div>
 
           <div class="battle-map-viewport" aria-label="Encounter battle map">
             <div class="battle-map-board square-grid" id="battleMapBoard"></div>
@@ -612,6 +587,11 @@
         </label>
 
         <label>
+          <span>Range (ft)</span>
+          <input id="spellRangeInput" type="number" min="0" step="5" required />
+        </label>
+
+        <label>
           <span>Dmg Min</span>
           <input id="spellDamageMinInput" type="number" min="0" step="1" required />
         </label>
@@ -653,6 +633,11 @@
             <option value="strength">Strength</option>
             <option value="dexterity">Dexterity</option>
           </select>
+        </label>
+
+        <label>
+          <span>Range (ft)</span>
+          <input id="weaponRangeInput" type="number" min="0" step="5" required />
         </label>
 
         <label class="description-field">

@@ -1,4 +1,5 @@
 import { getActiveCombatant, sortedCombatants } from "../combat.js";
+import { DEFAULT_SPELL_RANGE_FEET, DEFAULT_WEAPON_RANGE_FEET } from "../models.js";
 import {
   canRenderTurnPanel,
   combatantRowMarkup,
@@ -19,6 +20,7 @@ export class CombatTrackerRenderer {
     spellFormController = null,
     weaponFormController = null,
     battleMapController = null,
+    turnController = null,
   ) {
     this.elements = elements;
     this.formController = formController;
@@ -26,6 +28,7 @@ export class CombatTrackerRenderer {
     this.spellFormController = spellFormController;
     this.weaponFormController = weaponFormController;
     this.battleMapController = battleMapController;
+    this.turnController = turnController;
   }
 
   render(state, quickAccess) {
@@ -129,17 +132,59 @@ export class CombatTrackerRenderer {
     const hasSelectedTarget = Boolean(selectedTarget);
     const weapons = active.weapons ?? [];
     const spells = active.spells ?? [];
+    const weaponStates = this.getAttackOptionStates(
+      state,
+      active,
+      selectedTarget,
+      weapons,
+      DEFAULT_WEAPON_RANGE_FEET,
+    );
+    const spellStates = this.getAttackOptionStates(
+      state,
+      active,
+      selectedTarget,
+      spells,
+      DEFAULT_SPELL_RANGE_FEET,
+    );
+    const distanceText = this.getSelectedTargetDistanceText(state, active, selectedTarget);
 
     return {
       activeName: active.name,
-      selectedTargetText: selectedTarget ? `Target: ${selectedTarget.name}` : "Target: select from list",
-      weaponOptions: weapons.map(weaponOptionMarkup).join(""),
-      spellOptions: spells.map(spellOptionMarkup).join(""),
+      selectedTargetText: selectedTarget
+        ? `Target: ${selectedTarget.name}${distanceText}`
+        : "Target: select from list",
+      weaponOptions: weapons.map((weapon, index) => weaponOptionMarkup(weapon, index, weaponStates[index])).join(""),
+      spellOptions: spells.map((spell, index) => spellOptionMarkup(spell, index, spellStates[index])).join(""),
       canUseTargetedAction: hasSelectedTarget,
       hasWeapons: weapons.length > 0,
       hasSpells: spells.length > 0,
+      canRollAttack: hasSelectedTarget && weaponStates.some((rangeState) => !rangeState.disabled),
+      canCastSpell: hasSelectedTarget && spellStates.some((rangeState) => !rangeState.disabled),
       canAdvanceTurn: targets.length > 0 || livingCombatants.length >= 2,
     };
+  }
+
+  getAttackOptionStates(state, active, selectedTarget, attacks, defaultRangeFeet) {
+    return attacks.map((attack) => {
+      const rangeState = this.turnController?.getAttackRangeState(
+        state,
+        active,
+        selectedTarget,
+        attack,
+        defaultRangeFeet,
+      );
+      return {
+        disabled: selectedTarget ? rangeState?.canAttack === false : false,
+        rangeFeet: rangeState?.rangeFeet ?? attack.rangeFeet,
+      };
+    });
+  }
+
+  getSelectedTargetDistanceText(state, active, selectedTarget) {
+    if (!this.turnController || !selectedTarget || active.type !== "monster") return "";
+
+    const distanceFeet = this.turnController.getCombatantDistanceFeet(state, active, selectedTarget);
+    return ` (${distanceFeet} ft)`;
   }
 
   renderActiveTurnPanels(panels, panelState) {
@@ -148,14 +193,25 @@ export class CombatTrackerRenderer {
       panel.selectedTargetText.textContent = panelState.selectedTargetText;
       panel.weapon.innerHTML = panelState.weaponOptions;
       panel.spell.innerHTML = panelState.spellOptions;
+      this.selectFirstEnabledOption(panel.weapon);
+      this.selectFirstEnabledOption(panel.spell);
 
       panel.damageForm.querySelector("button[type='submit']").disabled = !panelState.canUseTargetedAction;
-      panel.rollAttackButton.disabled = !panelState.canUseTargetedAction || !panelState.hasWeapons;
-      panel.weapon.disabled = panel.rollAttackButton.disabled;
-      panel.castSpellButton.disabled = !panelState.canUseTargetedAction || !panelState.hasSpells;
-      panel.spell.disabled = panel.castSpellButton.disabled;
+      panel.rollAttackButton.disabled = !panelState.canRollAttack;
+      panel.weapon.disabled = !panelState.canUseTargetedAction || !panelState.hasWeapons;
+      panel.castSpellButton.disabled = !panelState.canCastSpell;
+      panel.spell.disabled = !panelState.canUseTargetedAction || !panelState.hasSpells;
       panel.nextTurnButton.disabled = !panelState.canAdvanceTurn;
     });
+  }
+
+  selectFirstEnabledOption(select) {
+    if (!select.selectedOptions[0]?.disabled) return;
+
+    const enabledIndex = Array.from(select.options).findIndex((option) => !option.disabled);
+    if (enabledIndex >= 0) {
+      select.selectedIndex = enabledIndex;
+    }
   }
 
   getTurnPanels() {
@@ -171,18 +227,6 @@ export class CombatTrackerRenderer {
         castSpellButton: this.elements.castSpellButton,
         nextTurnButton: this.elements.nextTurnButton,
         rollResult: this.elements.rollResult,
-      },
-      {
-        turnPanel: this.elements.battleMapTurnPanel,
-        activeName: this.elements.battleMapActiveName,
-        selectedTargetText: this.elements.battleMapSelectedTargetText,
-        damageForm: this.elements.battleMapDamageForm,
-        weapon: this.elements.battleMapWeapon,
-        spell: this.elements.battleMapSpell,
-        rollAttackButton: this.elements.battleMapRollAttackButton,
-        castSpellButton: this.elements.battleMapCastSpellButton,
-        nextTurnButton: this.elements.battleMapNextTurnButton,
-        rollResult: this.elements.battleMapRollResult,
       },
     ];
   }

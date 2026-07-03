@@ -1,4 +1,5 @@
 import { LibraryAttackFormController } from "./LibraryAttackFormController.js";
+import { DEFAULT_SPELL_RANGE_FEET } from "../models.js";
 
 export class SpellFormController extends LibraryAttackFormController {
   constructor(elements) {
@@ -16,6 +17,8 @@ export class SpellFormController extends LibraryAttackFormController {
       editTitle: "Edit Spell",
       addButtonText: "Add Spell",
       editButtonText: "Save Spell",
+      rangeInput: elements.spellRange,
+      defaultRangeFeet: DEFAULT_SPELL_RANGE_FEET,
       damageInputs: {
         minInput: elements.spellDamageMin,
         maxInput: elements.spellDamageMax,

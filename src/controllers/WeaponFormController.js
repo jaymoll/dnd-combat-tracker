@@ -1,4 +1,5 @@
 import { LibraryAttackFormController } from "./LibraryAttackFormController.js";
+import { DEFAULT_WEAPON_RANGE_FEET } from "../models.js";
 
 export class WeaponFormController extends LibraryAttackFormController {
   constructor(elements) {
@@ -16,6 +17,8 @@ export class WeaponFormController extends LibraryAttackFormController {
       editTitle: "Edit Weapon",
       addButtonText: "Add Weapon",
       editButtonText: "Save Weapon",
+      rangeInput: elements.weaponRange,
+      defaultRangeFeet: DEFAULT_WEAPON_RANGE_FEET,
       damageInputs: {
         minInput: elements.weaponDamageMin,
         maxInput: elements.weaponDamageMax,
