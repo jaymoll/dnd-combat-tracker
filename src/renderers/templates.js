@@ -70,7 +70,7 @@ export const spellOptionMarkup = (spell, index) =>
 export const weaponOptionMarkup = (weapon, index) =>
   `<option value="${index}">${escapeHtml(weapon.name)}</option>`;
 
-export const getStatusLabel = (combatant, activeId, state) => {
+const getStatusLabel = (combatant, activeId, state) => {
   if (combatant.isDefeated) return "Defeated";
   if (combatant.id === activeId && state.hasStarted && !state.isFinished) return "Active";
   return "Ready";
@@ -97,7 +97,7 @@ const conditionMenuMarkup = (combatant, state) => {
   </details>`;
 };
 
-export const conditionsMarkup = (combatant, state) => {
+const conditionsMarkup = (combatant, state) => {
   const conditions = combatant.conditions ?? [];
 
   const conditionPills =
@@ -115,19 +115,37 @@ export const conditionsMarkup = (combatant, state) => {
   return `<div class="condition-cell">${conditionPills}${conditionMenuMarkup(combatant, state)}</div>`;
 };
 
-export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetId, state }) => {
-  const status = getStatusLabel(combatant, activeId, state);
-  const isActive = combatant.id === activeId && state.hasStarted && !state.isFinished;
-  const isTargetable = state.hasStarted && !state.isFinished && !combatant.isDefeated && !isActive;
-  const isSelectedTarget = isTargetable && combatant.id === selectedTargetId;
-  const actionButtons = state.hasStarted
+const combatantRowClassName = ({ isActive, isTargetable, isSelectedTarget }, combatant) =>
+  [
+    isActive ? "active-row" : "",
+    combatant.isDefeated ? "defeated-row" : "",
+    isTargetable ? "targetable-row" : "",
+    isSelectedTarget ? "selected-target-row" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+const setupActionMarkup = (combatant, state) =>
+  state.hasStarted
     ? ""
     : `<div class="row-actions">
         <button type="button" data-action="edit" data-id="${combatant.id}">Edit</button>
         <button type="button" data-action="remove" data-id="${combatant.id}">Remove</button>
       </div>`;
 
-  return `<tr class="${isActive ? "active-row" : ""} ${combatant.isDefeated ? "defeated-row" : ""} ${isTargetable ? "targetable-row" : ""} ${isSelectedTarget ? "selected-target-row" : ""}" data-id="${combatant.id}">
+const monsterSummaryMarkup = (combatant) =>
+  combatant.type === "monster"
+    ? `<span class="table-detail">${escapeHtml(getMonsterStatBlockSummary(combatant))}</span>`
+    : "";
+
+export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetId, state }) => {
+  const status = getStatusLabel(combatant, activeId, state);
+  const isActive = combatant.id === activeId && state.hasStarted && !state.isFinished;
+  const isTargetable = state.hasStarted && !state.isFinished && !combatant.isDefeated && !isActive;
+  const isSelectedTarget = isTargetable && combatant.id === selectedTargetId;
+  const rowState = { isActive, isTargetable, isSelectedTarget };
+
+  return `<tr class="${combatantRowClassName(rowState, combatant)}" data-id="${combatant.id}">
     <td>${index + 1}</td>
     <td class="name-cell">${escapeHtml(combatant.name)}</td>
     <td><span class="type-pill type-${combatant.type}">${combatant.type}</span></td>
@@ -138,16 +156,12 @@ export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetI
     <td>${combatant.attacksPerTurn}</td>
     <td>
       <span>${escapeHtml(getAttackText(combatant))}</span>
-      ${
-        combatant.type === "monster"
-          ? `<span class="table-detail">${escapeHtml(getMonsterStatBlockSummary(combatant))}</span>`
-          : ""
-      }
+      ${monsterSummaryMarkup(combatant)}
     </td>
     <td>${combatant.damageDone}</td>
     <td>${conditionsMarkup(combatant, state)}</td>
     <td><span class="status-pill status-${status.toLowerCase()}">${status}</span></td>
-    <td class="setup-column">${actionButtons}</td>
+    <td class="setup-column">${setupActionMarkup(combatant, state)}</td>
   </tr>`;
 };
 

@@ -60,70 +60,107 @@ export class TurnController {
   rollAttack(state, targetId, weaponIndex) {
     if (!activeCombatantCanAct(state)) return null;
 
-    const active = getActiveCombatant(state);
-    const attacker = state.combatants.find((combatant) => combatant.id === active.id);
-    const target = state.combatants.find((combatant) => combatant.id === targetId);
-    const weapon = attacker?.weapons?.[Number(weaponIndex)];
-    if (!attacker || !weapon || !target || target.isDefeated) return null;
+    const context = this.getAttackContext(state, targetId);
+    const weapon = context?.attacker.weapons?.[Number(weaponIndex)];
+    if (!weapon) return null;
 
-    const d20 = rollInclusive(1, 20);
-    const attackBonus = getAttackBonus(attacker, weapon.ability);
-    const attackTotal = d20 + attackBonus;
-    const attackLabel = `${attacker.name} attacks with ${weapon.name}`;
+    const attackBonus = getAttackBonus(context.attacker, weapon.ability);
+    const roll = this.rollToHit(attackBonus);
+    const attackLabel = `${context.attacker.name} attacks with ${weapon.name}`;
 
-    if (attackTotal < target.armorClass) {
+    if (!this.doesAttackHit(roll, context.target)) {
       return this.finishAttack(
         state,
-        active,
-        `${attackLabel}, rolling ${d20} ${formatModifier(attackBonus)} = ${attackTotal}, missing ${target.name}'s AC ${target.armorClass}.`,
+        context.active,
+        this.createMissMessage(attackLabel, roll, context.target),
       );
     }
 
-    const damageRoll = rollInclusive(weapon.damageMin, weapon.damageMax);
-    const requestedDamage = Math.max(0, damageRoll + attackBonus + weapon.damageBonus);
-    const actualDamage = damageCombatant(attacker, target, requestedDamage);
-    const bonusText =
-      weapon.damageBonus === 0
-        ? `${formatModifier(attackBonus)}`
-        : `${formatModifier(attackBonus)} ${formatModifier(weapon.damageBonus)}`;
+    const damage = this.rollDamage(context.attacker, context.target, weapon, attackBonus + weapon.damageBonus);
+    const bonusText = this.formatWeaponDamageBonus(attackBonus, weapon.damageBonus);
 
     return this.finishAttack(
       state,
-      active,
-      `${attackLabel}, rolling ${d20} ${formatModifier(attackBonus)} = ${attackTotal}, hit AC ${target.armorClass}, and dealt ${actualDamage} damage (${damageRoll} ${bonusText}).`,
+      context.active,
+      this.createHitMessage(attackLabel, roll, context.target, damage, bonusText),
     );
   }
 
   castSpell(state, targetId, spellIndex) {
     if (!activeCombatantCanAct(state)) return null;
 
-    const active = getActiveCombatant(state);
-    const attacker = state.combatants.find((combatant) => combatant.id === active.id);
-    const target = state.combatants.find((combatant) => combatant.id === targetId);
-    const spell = attacker?.spells?.[Number(spellIndex)];
-    if (!attacker || !spell || !target || target.isDefeated) return null;
+    const context = this.getAttackContext(state, targetId);
+    const spell = context?.attacker.spells?.[Number(spellIndex)];
+    if (!spell) return null;
 
-    const d20 = rollInclusive(1, 20);
-    const spellAbility = attacker.statBlock?.spellcastingAbility ?? "intelligence";
-    const attackBonus = getAttackBonus(attacker, spellAbility);
-    const attackTotal = d20 + attackBonus;
-    const spellLabel = `${attacker.name} casts ${spell.name}`;
+    const spellAbility = context.attacker.statBlock?.spellcastingAbility ?? "intelligence";
+    const attackBonus = getAttackBonus(context.attacker, spellAbility);
+    const roll = this.rollToHit(attackBonus);
+    const spellLabel = `${context.attacker.name} casts ${spell.name}`;
 
-    if (attackTotal < target.armorClass) {
+    if (!this.doesAttackHit(roll, context.target)) {
       return this.finishTurn(
         state,
-        `${spellLabel}, rolling ${d20} ${formatModifier(attackBonus)} = ${attackTotal}, missing ${target.name}'s AC ${target.armorClass}.`,
+        this.createMissMessage(spellLabel, roll, context.target),
       );
     }
 
-    const damageRoll = rollInclusive(spell.damageMin, spell.damageMax);
-    const requestedDamage = Math.max(0, damageRoll + spell.damageBonus);
-    const actualDamage = damageCombatant(attacker, target, requestedDamage);
+    const damage = this.rollDamage(context.attacker, context.target, spell, spell.damageBonus);
 
     return this.finishTurn(
       state,
-      `${spellLabel}, rolling ${d20} ${formatModifier(attackBonus)} = ${attackTotal}, hit AC ${target.armorClass}, and dealt ${actualDamage} damage (${damageRoll} ${formatModifier(spell.damageBonus)}).`,
+      this.createHitMessage(spellLabel, roll, context.target, damage, formatModifier(spell.damageBonus)),
     );
+  }
+
+  getAttackContext(state, targetId) {
+    const active = getActiveCombatant(state);
+    const attacker = active ? state.combatants.find((combatant) => combatant.id === active.id) : null;
+    const target = state.combatants.find((combatant) => combatant.id === targetId);
+
+    if (!active || !attacker || !target || target.isDefeated) return null;
+    return { active, attacker, target };
+  }
+
+  rollToHit(bonus) {
+    const d20 = rollInclusive(1, 20);
+    return {
+      d20,
+      bonus,
+      total: d20 + bonus,
+    };
+  }
+
+  doesAttackHit(roll, target) {
+    return roll.total >= target.armorClass;
+  }
+
+  rollDamage(attacker, target, attack, bonus) {
+    const damageRoll = rollInclusive(attack.damageMin, attack.damageMax);
+    const requestedDamage = Math.max(0, damageRoll + bonus);
+
+    return {
+      damageRoll,
+      actualDamage: damageCombatant(attacker, target, requestedDamage),
+    };
+  }
+
+  createMissMessage(label, roll, target) {
+    return `${label}, rolling ${this.formatAttackRoll(roll)}, missing ${target.name}'s AC ${target.armorClass}.`;
+  }
+
+  createHitMessage(label, roll, target, damage, bonusText) {
+    return `${label}, rolling ${this.formatAttackRoll(roll)}, hit AC ${target.armorClass}, and dealt ${damage.actualDamage} damage (${damage.damageRoll} ${bonusText}).`;
+  }
+
+  formatAttackRoll(roll) {
+    return `${roll.d20} ${formatModifier(roll.bonus)} = ${roll.total}`;
+  }
+
+  formatWeaponDamageBonus(attackBonus, weaponDamageBonus) {
+    return weaponDamageBonus === 0
+      ? formatModifier(attackBonus)
+      : `${formatModifier(attackBonus)} ${formatModifier(weaponDamageBonus)}`;
   }
 
   finishAttack(state, active, message) {

@@ -3,24 +3,13 @@ import {
   createBattleMapPosition,
   getCombatantMovementTiles,
   getCombatantSpeedFeet,
-  TILE_FEET,
 } from "../models.js";
+import { BattleMapGeometry } from "./BattleMapGeometry.js";
 import { clampNumber, escapeHtml } from "../utils.js";
 
-const SQUARE_TILE_SIZE = 48;
-const HEX_WIDTH = 52;
-const HEX_HEIGHT = 45;
-const HEX_STEP_X = 39;
 const DRAG_THRESHOLD_PX = 4;
 const MIN_GRID_SIZE = 4;
 const MAX_GRID_SIZE = 60;
-
-const clampGridValue = (value, max) => Math.min(Math.max(value, 0), max - 1);
-
-const clampPosition = (position, map) => ({
-  x: clampGridValue(position?.x ?? 0, map.width),
-  y: clampGridValue(position?.y ?? 0, map.height),
-});
 
 const tokenInitials = (name) =>
   String(name)
@@ -35,6 +24,7 @@ export class BattleMapController {
     this.elements = elements;
     this.targetController = targetController;
     this.onChange = onChange;
+    this.geometry = new BattleMapGeometry();
     this.state = null;
     this.drag = null;
     this.statusOverride = "";
@@ -63,7 +53,7 @@ export class BattleMapController {
 
   resetPositions(state) {
     state.combatants.forEach((combatant) => {
-      combatant.battleMapPosition = clampPosition(
+      combatant.battleMapPosition = this.geometry.clampPosition(
         createBattleMapPosition(combatant.type, combatant.order),
         state.battleMap,
       );
@@ -75,7 +65,7 @@ export class BattleMapController {
     this.ensureCombatantPositions(state);
 
     const map = state.battleMap;
-    const layout = this.getLayout(map);
+    const layout = this.geometry.getLayout(map);
     this.elements.battleMapGridType.value = map.gridType;
     this.elements.battleMapWidth.value = map.width;
     this.elements.battleMapHeight.value = map.height;
@@ -121,7 +111,7 @@ export class BattleMapController {
 
     for (let y = 0; y < map.height; y += 1) {
       for (let x = 0; x < map.width; x += 1) {
-        const position = this.getCellPosition(map, { x, y });
+        const position = this.geometry.getCellPosition(map, { x, y });
         cells.push(
           `<div class="battle-map-cell" style="left:${position.left}px;top:${position.top}px;" aria-hidden="true"></div>`,
         );
@@ -135,36 +125,41 @@ export class BattleMapController {
     const active = getActiveCombatant(state);
 
     return state.combatants
-      .map((combatant) => {
-        const position = clampPosition(combatant.battleMapPosition, state.battleMap);
-        const cell = this.getCellPosition(state.battleMap, position);
-        const canMove = this.canMoveCombatant(state, combatant);
-        const isActive = active?.id === combatant.id && state.hasStarted && !state.isFinished;
-        const isSelected = this.targetController.selectedId === combatant.id;
-        const movementTiles = getCombatantMovementTiles(combatant);
-        const className = [
-          "battle-token",
-          `battle-token-${combatant.type}`,
-          isActive ? "is-active-token" : "",
-          isSelected ? "is-selected-token" : "",
-          combatant.isDefeated ? "is-defeated-token" : "",
-          canMove ? "is-movable-token" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-
-        return `<button
-          class="${className}"
-          type="button"
-          style="left:${cell.centerX}px;top:${cell.centerY}px;"
-          data-token-id="${combatant.id}"
-          title="${escapeHtml(combatant.name)} - ${movementTiles} tile${movementTiles === 1 ? "" : "s"}"
-        >
-          <span class="token-initials">${escapeHtml(tokenInitials(combatant.name))}</span>
-          <span class="token-name">${escapeHtml(combatant.name)}</span>
-        </button>`;
-      })
+      .map((combatant) => this.renderToken(state, combatant, active))
       .join("");
+  }
+
+  renderToken(state, combatant, active) {
+    const position = this.geometry.clampPosition(combatant.battleMapPosition, state.battleMap);
+    const cell = this.geometry.getCellPosition(state.battleMap, position);
+    const movementTiles = getCombatantMovementTiles(combatant);
+
+    return `<button
+      class="${this.getTokenClassName(state, combatant, active)}"
+      type="button"
+      style="left:${cell.centerX}px;top:${cell.centerY}px;"
+      data-token-id="${combatant.id}"
+      title="${escapeHtml(combatant.name)} - ${movementTiles} tile${movementTiles === 1 ? "" : "s"}"
+    >
+      <span class="token-initials">${escapeHtml(tokenInitials(combatant.name))}</span>
+      <span class="token-name">${escapeHtml(combatant.name)}</span>
+    </button>`;
+  }
+
+  getTokenClassName(state, combatant, active) {
+    const isActive = active?.id === combatant.id && state.hasStarted && !state.isFinished;
+    const isSelected = this.targetController.selectedId === combatant.id;
+
+    return [
+      "battle-token",
+      `battle-token-${combatant.type}`,
+      isActive ? "is-active-token" : "",
+      isSelected ? "is-selected-token" : "",
+      combatant.isDefeated ? "is-defeated-token" : "",
+      this.canMoveCombatant(state, combatant) ? "is-movable-token" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   startDrag(event, state) {
@@ -177,7 +172,9 @@ export class BattleMapController {
     if (!combatant) return;
 
     if (!this.canMoveCombatant(state, combatant)) {
-      this.selectTargetFromToken(state, combatant);
+      if (this.selectTargetFromToken(state, combatant)) {
+        this.onChange();
+      }
       return;
     }
 
@@ -216,14 +213,9 @@ export class BattleMapController {
   handlePointerUp(event) {
     if (!this.drag || !this.state) return;
 
-    window.removeEventListener("pointermove", this.pointerMoveHandler);
-
-    const { combatantId, hasMoved, startPosition, token } = this.drag;
+    const { combatantId, hasMoved, startPosition } = this.finishDrag();
     const state = this.state;
     const combatant = state.combatants.find((item) => item.id === combatantId);
-    this.drag = null;
-
-    token.classList.remove("is-dragging-token");
 
     if (!combatant) {
       this.onChange();
@@ -236,29 +228,50 @@ export class BattleMapController {
       return;
     }
 
-    const targetPosition = this.getCellFromPointer(state.battleMap, event);
-    if (!targetPosition || this.isOccupied(state, targetPosition, combatant.id)) {
-      this.statusOverride = "Space occupied";
+    const targetPosition = this.getOpenDropPosition(state, event, combatant.id);
+    if (!targetPosition || !this.spendMovement(state, startPosition, targetPosition)) {
       this.onChange();
       return;
     }
 
-    const distanceFeet = this.getDistanceFeet(state.battleMap, startPosition, targetPosition);
-    if (state.hasStarted) {
-      const active = getActiveCombatant(state);
-      const remaining = Math.max(0, getCombatantSpeedFeet(active) - state.movementUsedThisTurn);
-
-      if (distanceFeet > remaining) {
-        this.statusOverride = `${distanceFeet} ft exceeds remaining movement`;
-        this.onChange();
-        return;
-      }
-
-      state.movementUsedThisTurn += distanceFeet;
-    }
-
     combatant.battleMapPosition = targetPosition;
     this.onChange();
+  }
+
+  finishDrag() {
+    window.removeEventListener("pointermove", this.pointerMoveHandler);
+
+    const drag = this.drag;
+    this.drag = null;
+    drag.token.classList.remove("is-dragging-token");
+    return drag;
+  }
+
+  getOpenDropPosition(state, event, combatantId) {
+    const targetPosition = this.getCellFromPointer(state.battleMap, event);
+
+    if (!targetPosition || this.isOccupied(state, targetPosition, combatantId)) {
+      this.statusOverride = "Space occupied";
+      return null;
+    }
+
+    return targetPosition;
+  }
+
+  spendMovement(state, from, to) {
+    if (!state.hasStarted) return true;
+
+    const distanceFeet = this.geometry.getDistanceFeet(state.battleMap, from, to);
+    const active = getActiveCombatant(state);
+    const remaining = Math.max(0, getCombatantSpeedFeet(active) - state.movementUsedThisTurn);
+
+    if (distanceFeet > remaining) {
+      this.statusOverride = `${distanceFeet} ft exceeds remaining movement`;
+      return false;
+    }
+
+    state.movementUsedThisTurn += distanceFeet;
+    return true;
   }
 
   selectTargetFromToken(state, combatant) {
@@ -271,10 +284,10 @@ export class BattleMapController {
       active.id === combatant.id ||
       !this.targetController.select(combatant.id, state)
     ) {
-      return;
+      return false;
     }
 
-    this.onChange();
+    return true;
   }
 
   canMoveCombatant(state, combatant) {
@@ -290,7 +303,7 @@ export class BattleMapController {
     const occupied = new Set();
 
     state.combatants.forEach((combatant) => {
-      const clampedPosition = clampPosition(
+      const clampedPosition = this.geometry.clampPosition(
         combatant.battleMapPosition ?? createBattleMapPosition(combatant.type, combatant.order),
         state.battleMap,
       );
@@ -312,7 +325,7 @@ export class BattleMapController {
         const position = { x, y };
         if (occupied.has(this.getPositionKey(position))) continue;
 
-        const distance = this.getDistanceFeet(map, preferredPosition, position);
+        const distance = this.geometry.getDistanceFeet(map, preferredPosition, position);
         if (distance < bestDistance) {
           bestPosition = position;
           bestDistance = distance;
@@ -348,94 +361,6 @@ export class BattleMapController {
   getCellFromPointer(map, event) {
     const point = this.getPointerPoint(event);
 
-    if (map.gridType === "hex") {
-      return this.getNearestHexCell(map, point);
-    }
-
-    return {
-      x: clampGridValue(Math.floor(point.x / SQUARE_TILE_SIZE), map.width),
-      y: clampGridValue(Math.floor(point.y / SQUARE_TILE_SIZE), map.height),
-    };
-  }
-
-  getNearestHexCell(map, point) {
-    let nearest = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (let y = 0; y < map.height; y += 1) {
-      for (let x = 0; x < map.width; x += 1) {
-        const cell = this.getCellPosition(map, { x, y });
-        const distance = (cell.centerX - point.x) ** 2 + (cell.centerY - point.y) ** 2;
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearest = { x, y };
-        }
-      }
-    }
-
-    return nearest;
-  }
-
-  getDistanceFeet(map, from, to) {
-    if (from.x === to.x && from.y === to.y) return 0;
-
-    if (map.gridType === "hex") {
-      return this.getHexDistance(from, to) * TILE_FEET;
-    }
-
-    return Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y)) * TILE_FEET;
-  }
-
-  getHexDistance(from, to) {
-    const a = this.oddColumnToCube(from);
-    const b = this.oddColumnToCube(to);
-
-    return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.z - b.z));
-  }
-
-  oddColumnToCube(position) {
-    const x = position.x;
-    const z = position.y - (position.x - (position.x & 1)) / 2;
-    const y = -x - z;
-
-    return { x, y, z };
-  }
-
-  getLayout(map) {
-    if (map.gridType === "hex") {
-      return {
-        width: (map.width - 1) * HEX_STEP_X + HEX_WIDTH,
-        height: map.height * HEX_HEIGHT + HEX_HEIGHT / 2,
-      };
-    }
-
-    return {
-      width: map.width * SQUARE_TILE_SIZE,
-      height: map.height * SQUARE_TILE_SIZE,
-    };
-  }
-
-  getCellPosition(map, position) {
-    if (map.gridType === "hex") {
-      const left = position.x * HEX_STEP_X;
-      const top = position.y * HEX_HEIGHT + (position.x % 2 === 1 ? HEX_HEIGHT / 2 : 0);
-
-      return {
-        left,
-        top,
-        centerX: left + HEX_WIDTH / 2,
-        centerY: top + HEX_HEIGHT / 2,
-      };
-    }
-
-    const left = position.x * SQUARE_TILE_SIZE;
-    const top = position.y * SQUARE_TILE_SIZE;
-
-    return {
-      left,
-      top,
-      centerX: left + SQUARE_TILE_SIZE / 2,
-      centerY: top + SQUARE_TILE_SIZE / 2,
-    };
+    return this.geometry.getCellFromPoint(map, point);
   }
 }

@@ -42,40 +42,41 @@ export class CombatTrackerRenderer {
   }
 
   renderQuickAccess(quickAccess, state) {
-    this.renderQuickAccessList(
-      quickAccess.character,
-      "character",
-      this.elements.characterQuickList,
-      this.elements.emptyCharacterQuickList,
+    [
+      [quickAccess.character, "character", this.elements.characterQuickList, this.elements.emptyCharacterQuickList, ["add"]],
+      [quickAccess.monster, "monster", this.elements.monsterQuickList, this.elements.emptyMonsterQuickList, ["add"]],
+      [
+        quickAccess.character,
+        "character",
+        this.elements.managementCharacterQuickList,
+        this.elements.emptyManagementCharacterQuickList,
+        ["edit", "remove"],
+      ],
+      [
+        quickAccess.monster,
+        "monster",
+        this.elements.managementMonsterQuickList,
+        this.elements.emptyManagementMonsterQuickList,
+        ["edit", "remove"],
+      ],
+    ].forEach(([items, type, listElement, emptyElement, actions]) => {
+      this.renderQuickAccessList(items, type, listElement, emptyElement, state.hasStarted, actions);
+    });
+
+    this.renderAttackQuickAccessList(
+      quickAccess.spell,
+      this.elements.spellQuickList,
+      this.elements.emptySpellQuickList,
+      spellQuickAccessItemMarkup,
       state.hasStarted,
-      ["add"],
     );
-    this.renderQuickAccessList(
-      quickAccess.monster,
-      "monster",
-      this.elements.monsterQuickList,
-      this.elements.emptyMonsterQuickList,
+    this.renderAttackQuickAccessList(
+      quickAccess.weapon,
+      this.elements.weaponQuickList,
+      this.elements.emptyWeaponQuickList,
+      weaponQuickAccessItemMarkup,
       state.hasStarted,
-      ["add"],
     );
-    this.renderQuickAccessList(
-      quickAccess.character,
-      "character",
-      this.elements.managementCharacterQuickList,
-      this.elements.emptyManagementCharacterQuickList,
-      state.hasStarted,
-      ["edit", "remove"],
-    );
-    this.renderQuickAccessList(
-      quickAccess.monster,
-      "monster",
-      this.elements.managementMonsterQuickList,
-      this.elements.emptyManagementMonsterQuickList,
-      state.hasStarted,
-      ["edit", "remove"],
-    );
-    this.renderSpellQuickAccessList(quickAccess.spell, state.hasStarted);
-    this.renderWeaponQuickAccessList(quickAccess.weapon, state.hasStarted);
   }
 
   renderQuickAccessList(items, type, listElement, emptyElement, isDisabled, actions) {
@@ -83,20 +84,10 @@ export class CombatTrackerRenderer {
     listElement.innerHTML = items.map((item) => quickAccessItemMarkup(item, type, isDisabled, actions)).join("");
   }
 
-  renderSpellQuickAccessList(items, isDisabled) {
+  renderAttackQuickAccessList(items, listElement, emptyElement, itemMarkup, isDisabled) {
     items ??= [];
-    this.elements.emptySpellQuickList.hidden = items.length > 0;
-    this.elements.spellQuickList.innerHTML = items
-      .map((item) => spellQuickAccessItemMarkup(item, isDisabled))
-      .join("");
-  }
-
-  renderWeaponQuickAccessList(items, isDisabled) {
-    items ??= [];
-    this.elements.emptyWeaponQuickList.hidden = items.length > 0;
-    this.elements.weaponQuickList.innerHTML = items
-      .map((item) => weaponQuickAccessItemMarkup(item, isDisabled))
-      .join("");
+    emptyElement.hidden = items.length > 0;
+    listElement.innerHTML = items.map((item) => itemMarkup(item, isDisabled)).join("");
   }
 
   renderTurnPanel(state) {
@@ -107,17 +98,25 @@ export class CombatTrackerRenderer {
     });
 
     if (!canRenderTurnPanel(state)) {
-      panels.forEach((panel) => {
-        panel.activeName.textContent = "";
-        panel.selectedTargetText.textContent = "";
-        panel.weapon.innerHTML = "";
-        panel.spell.innerHTML = "";
-        panel.rollResult.textContent = "";
-      });
+      this.resetTurnPanels(panels);
       this.targetController.clear();
       return;
     }
 
+    this.renderActiveTurnPanels(panels, this.getTurnPanelState(state));
+  }
+
+  resetTurnPanels(panels) {
+    panels.forEach((panel) => {
+      panel.activeName.textContent = "";
+      panel.selectedTargetText.textContent = "";
+      panel.weapon.innerHTML = "";
+      panel.spell.innerHTML = "";
+      panel.rollResult.textContent = "";
+    });
+  }
+
+  getTurnPanelState(state) {
     const { active, livingCombatants } = turnSummary(state);
     const targets = this.targetController.getLivingTargets(state);
     let selectedTarget = targets.find((target) => target.id === this.targetController.selectedId);
@@ -128,23 +127,34 @@ export class CombatTrackerRenderer {
     }
 
     const hasSelectedTarget = Boolean(selectedTarget);
-    const weaponOptions = (active.weapons ?? []).map(weaponOptionMarkup).join("");
-    const spellOptions = (active.spells ?? []).map(spellOptionMarkup).join("");
+    const weapons = active.weapons ?? [];
+    const spells = active.spells ?? [];
 
+    return {
+      activeName: active.name,
+      selectedTargetText: selectedTarget ? `Target: ${selectedTarget.name}` : "Target: select from list",
+      weaponOptions: weapons.map(weaponOptionMarkup).join(""),
+      spellOptions: spells.map(spellOptionMarkup).join(""),
+      canUseTargetedAction: hasSelectedTarget,
+      hasWeapons: weapons.length > 0,
+      hasSpells: spells.length > 0,
+      canAdvanceTurn: targets.length > 0 || livingCombatants.length >= 2,
+    };
+  }
+
+  renderActiveTurnPanels(panels, panelState) {
     panels.forEach((panel) => {
-      panel.activeName.textContent = active.name;
-      panel.selectedTargetText.textContent = selectedTarget
-        ? `Target: ${selectedTarget.name}`
-        : "Target: select from list";
-      panel.weapon.innerHTML = weaponOptions;
-      panel.spell.innerHTML = spellOptions;
+      panel.activeName.textContent = panelState.activeName;
+      panel.selectedTargetText.textContent = panelState.selectedTargetText;
+      panel.weapon.innerHTML = panelState.weaponOptions;
+      panel.spell.innerHTML = panelState.spellOptions;
 
-      panel.damageForm.querySelector("button[type='submit']").disabled = !hasSelectedTarget;
-      panel.rollAttackButton.disabled = !hasSelectedTarget || (active.weapons ?? []).length === 0;
+      panel.damageForm.querySelector("button[type='submit']").disabled = !panelState.canUseTargetedAction;
+      panel.rollAttackButton.disabled = !panelState.canUseTargetedAction || !panelState.hasWeapons;
       panel.weapon.disabled = panel.rollAttackButton.disabled;
-      panel.castSpellButton.disabled = !hasSelectedTarget || (active.spells ?? []).length === 0;
+      panel.castSpellButton.disabled = !panelState.canUseTargetedAction || !panelState.hasSpells;
       panel.spell.disabled = panel.castSpellButton.disabled;
-      panel.nextTurnButton.disabled = targets.length === 0 && livingCombatants.length < 2;
+      panel.nextTurnButton.disabled = !panelState.canAdvanceTurn;
     });
   }
 

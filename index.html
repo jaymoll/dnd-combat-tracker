@@ -23,6 +23,9 @@
         <button class="screen-tab" type="button" data-screen-button="battle-map" aria-pressed="false">
           Battle Map
         </button>
+        <button class="screen-tab" type="button" data-screen-button="encounter-calculator" aria-pressed="false">
+          Calculator
+        </button>
         <button class="screen-tab" type="button" data-screen-button="management" aria-pressed="false">
           Management
         </button>
@@ -216,6 +219,119 @@
           <div class="battle-map-viewport" aria-label="Encounter battle map">
             <div class="battle-map-board square-grid" id="battleMapBoard"></div>
           </div>
+        </section>
+      </div>
+
+      <div class="screen-view calculator-screen" id="encounterCalculatorScreen" data-screen="encounter-calculator" hidden>
+        <section class="calculator-grid" aria-label="Encounter difficulty calculator">
+          <section class="calculator-panel" aria-labelledby="calculator-party-title">
+            <div class="section-heading compact-heading">
+              <div class="heading-copy">
+                <h2 id="calculator-party-title">Party</h2>
+                <span id="calculatorPartySummary"></span>
+              </div>
+            </div>
+
+            <label class="calculator-party-size">
+              <span>Players</span>
+              <input id="calculatorPartySizeInput" type="number" min="1" max="20" step="1" value="4" required />
+            </label>
+
+            <div class="party-level-grid" id="calculatorPartyLevels"></div>
+          </section>
+
+          <section class="calculator-panel" aria-labelledby="calculator-monster-search-title">
+            <div class="section-heading compact-heading">
+              <div class="heading-copy">
+                <h2 id="calculator-monster-search-title">Monster Library</h2>
+                <span>Search saved monsters</span>
+              </div>
+            </div>
+
+            <label>
+              <span>Search</span>
+              <input id="calculatorMonsterSearchInput" type="search" autocomplete="off" />
+            </label>
+
+            <div class="calculator-monster-results" id="calculatorMonsterResults"></div>
+            <p class="quick-empty" id="calculatorNoMonsterResults">No matching monsters.</p>
+          </section>
+
+          <section class="calculator-panel calculator-results-panel" aria-labelledby="calculator-results-title">
+            <div class="section-heading compact-heading">
+              <div class="heading-copy">
+                <h2 id="calculator-results-title">Difficulty</h2>
+                <span>Levels <span id="calculatorLevelSummary"></span></span>
+              </div>
+              <span class="difficulty-badge difficulty-trivial" id="calculatorDifficulty">Trivial</span>
+            </div>
+
+            <div class="difficulty-meter" aria-label="Progress toward Deadly threshold">
+              <div class="difficulty-meter-fill" id="calculatorDeadlyProgress" data-difficulty="trivial"></div>
+            </div>
+            <p class="difficulty-meter-label" id="calculatorDeadlyProgressLabel">0% of Deadly</p>
+
+            <dl class="calculator-stat-grid">
+              <div>
+                <dt>Easy</dt>
+                <dd id="calculatorEasyThreshold">0</dd>
+              </div>
+              <div>
+                <dt>Medium</dt>
+                <dd id="calculatorMediumThreshold">0</dd>
+              </div>
+              <div>
+                <dt>Hard</dt>
+                <dd id="calculatorHardThreshold">0</dd>
+              </div>
+              <div>
+                <dt>Deadly</dt>
+                <dd id="calculatorDeadlyThreshold">0</dd>
+              </div>
+              <div>
+                <dt>Base XP</dt>
+                <dd id="calculatorBaseXp">0</dd>
+              </div>
+              <div>
+                <dt>Adjusted XP</dt>
+                <dd id="calculatorAdjustedXp">0</dd>
+              </div>
+              <div>
+                <dt>Monsters</dt>
+                <dd id="calculatorMonsterCount">0</dd>
+              </div>
+              <div>
+                <dt>Multiplier</dt>
+                <dd id="calculatorMultiplier">x0</dd>
+              </div>
+            </dl>
+
+            <ul class="calculator-warnings" id="calculatorWarnings" hidden></ul>
+          </section>
+
+          <section class="calculator-panel calculator-selected-panel" aria-labelledby="calculator-selected-title">
+            <div class="section-heading compact-heading">
+              <div class="heading-copy">
+                <h2 id="calculator-selected-title">Encounter Monsters</h2>
+                <span>Calculator only</span>
+              </div>
+            </div>
+
+            <div class="table-wrap calculator-table-wrap">
+              <table class="calculator-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Monster</th>
+                    <th scope="col">CR</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="calculatorMonsterRows"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="calculatorEmptyMonsterRows">No monsters added.</p>
+          </section>
         </section>
       </div>
 

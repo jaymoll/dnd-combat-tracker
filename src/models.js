@@ -25,6 +25,56 @@ export const createInitialQuickAccess = () => ({
 
 const readText = (entry, key, fallback = "") => String(entry?.[key] ?? fallback).trim();
 
+const monsterIdentityFields = [
+  ["size", "Medium"],
+  ["creatureType", "humanoid"],
+  ["alignment", "unaligned"],
+  ["speed", "30 ft."],
+];
+
+const monsterAbilityFields = [
+  ["strength", "str"],
+  ["dexterity", "dex"],
+  ["constitution", "con"],
+  ["intelligence", "int"],
+  ["wisdom", "wis"],
+  ["charisma", "cha"],
+];
+
+const monsterDefenseFields = [
+  ["savingThrows", ""],
+  ["skills", ""],
+  ["damageVulnerabilities", ""],
+  ["damageResistances", ""],
+  ["damageImmunities", ""],
+  ["conditionImmunities", ""],
+  ["senses", "passive Perception 10"],
+  ["languages", ""],
+  ["challengeRating", "0"],
+];
+
+const monsterActionFields = [
+  ["traits", ""],
+  ["actions", ""],
+  ["reactions", ""],
+  ["legendaryActions", ""],
+];
+
+const readTextFields = (source, fields) =>
+  Object.fromEntries(fields.map(([field, fallback]) => [field, readText(source, field, fallback)]));
+
+const readAbilityFields = (source) =>
+  Object.fromEntries(
+    monsterAbilityFields.map(([field, alias]) => [field, clampNumber(source[field] ?? source[alias] ?? 10, 1, 30)]),
+  );
+
+const readSpellcastingAbility = (source) => {
+  const spellcastingAbility = readText(source, "spellcastingAbility", "intelligence");
+  return ["intelligence", "wisdom", "charisma"].includes(spellcastingAbility)
+    ? spellcastingAbility
+    : "intelligence";
+};
+
 export const CONDITION_OPTIONS = [
   { value: "blinded", label: "Blinded" },
   { value: "charmed", label: "Charmed" },
@@ -81,7 +131,7 @@ export const hasConditionImmunity = (combatant, condition) => {
 
 export const getAbilityModifier = (score) => Math.floor((clampNumber(score, 1, 30) - 10) / 2);
 
-export const getAttackAbilityScore = (combatant, ability) => {
+const getAttackAbilityScore = (combatant, ability) => {
   const statBlock = combatant?.statBlock ?? {};
   if (ability === "agility") return statBlock.dexterity ?? 10;
   return statBlock[ability] ?? 10;
@@ -92,35 +142,23 @@ export const getAttackBonus = (combatant, ability) =>
 
 export const normalizeMonsterStatBlock = (entry = {}) => {
   const source = entry.statBlock && typeof entry.statBlock === "object" ? entry.statBlock : entry;
-  const spellcastingAbility = readText(source, "spellcastingAbility", "intelligence");
 
   return {
-    size: readText(source, "size", "Medium"),
-    creatureType: readText(source, "creatureType", "humanoid"),
-    alignment: readText(source, "alignment", "unaligned"),
-    speed: readText(source, "speed", "30 ft."),
-    strength: clampNumber(source.strength ?? source.str ?? 10, 1, 30),
-    dexterity: clampNumber(source.dexterity ?? source.dex ?? 10, 1, 30),
-    constitution: clampNumber(source.constitution ?? source.con ?? 10, 1, 30),
-    intelligence: clampNumber(source.intelligence ?? source.int ?? 10, 1, 30),
-    wisdom: clampNumber(source.wisdom ?? source.wis ?? 10, 1, 30),
-    charisma: clampNumber(source.charisma ?? source.cha ?? 10, 1, 30),
-    savingThrows: readText(source, "savingThrows"),
-    skills: readText(source, "skills"),
-    damageVulnerabilities: readText(source, "damageVulnerabilities"),
-    damageResistances: readText(source, "damageResistances"),
-    damageImmunities: readText(source, "damageImmunities"),
-    conditionImmunities: readText(source, "conditionImmunities"),
-    senses: readText(source, "senses", "passive Perception 10"),
-    languages: readText(source, "languages"),
-    challengeRating: readText(source, "challengeRating", "0"),
-    spellcastingAbility: ["intelligence", "wisdom", "charisma"].includes(spellcastingAbility)
-      ? spellcastingAbility
-      : "intelligence",
-    traits: readText(source, "traits"),
-    actions: readText(source, "actions"),
-    reactions: readText(source, "reactions"),
-    legendaryActions: readText(source, "legendaryActions"),
+    ...readTextFields(source, monsterIdentityFields),
+    ...readAbilityFields(source),
+    ...readTextFields(source, monsterDefenseFields),
+    spellcastingAbility: readSpellcastingAbility(source),
+    ...readTextFields(source, monsterActionFields),
+  };
+};
+
+const normalizeDamageRange = (entry) => {
+  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
+
+  return {
+    damageMin,
+    damageMax: clampNumber(entry.damageMax ?? damageMin, damageMin),
+    damageBonus: clampNumber(entry.damageBonus ?? 0, -99),
   };
 };
 
@@ -129,9 +167,7 @@ export const normalizeSpell = (entry, idFactory, index = 0) => {
 
   const name = String(entry.name ?? "").trim();
   const description = String(entry.description ?? "").trim();
-  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
-  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
-  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
+  const damage = normalizeDamageRange(entry);
 
   if (!name) return null;
 
@@ -139,9 +175,7 @@ export const normalizeSpell = (entry, idFactory, index = 0) => {
     id: String(entry.id || idFactory("spell", index)),
     name,
     description,
-    damageMin,
-    damageMax,
-    damageBonus,
+    ...damage,
   };
 };
 
@@ -152,9 +186,7 @@ export const normalizeWeapon = (entry, idFactory, index = 0) => {
   const description = String(entry.description ?? "").trim();
   const rawAbility = entry.ability === "agility" ? "dexterity" : entry.ability;
   const ability = ["strength", "dexterity"].includes(rawAbility) ? rawAbility : "strength";
-  const damageMin = clampNumber(entry.damageMin ?? 1, 0);
-  const damageMax = clampNumber(entry.damageMax ?? damageMin, damageMin);
-  const damageBonus = clampNumber(entry.damageBonus ?? 0, -99);
+  const damage = normalizeDamageRange(entry);
 
   if (!name) return null;
 
@@ -163,9 +195,7 @@ export const normalizeWeapon = (entry, idFactory, index = 0) => {
     name,
     description,
     ability,
-    damageMin,
-    damageMax,
-    damageBonus,
+    ...damage,
   };
 };
 
@@ -178,6 +208,11 @@ export const getCombatantSpeedFeet = (combatant) => {
   return speedMatch ? clampNumber(speedMatch[1], TILE_FEET) : DEFAULT_MOVEMENT_FEET;
 };
 
+const normalizeAttackList = (items, normalizer, idFactory) =>
+  Array.isArray(items)
+    ? items.map((item, index) => normalizer(item, idFactory, index)).filter(Boolean)
+    : [];
+
 export const normalizeCreature = (entry, type, idFactory) => {
   if (!entry || typeof entry !== "object") return null;
 
@@ -186,12 +221,8 @@ export const normalizeCreature = (entry, type, idFactory) => {
   const currentHp = clampNumber(entry.currentHp ?? maxHp, 0, maxHp);
   const armorClass = clampNumber(entry.armorClass ?? 10, 1);
   const attacksPerTurn = clampNumber(entry.attacksPerTurn ?? 1, 1);
-  const spells = Array.isArray(entry.spells)
-    ? entry.spells.map((spell, index) => normalizeSpell(spell, idFactory, index)).filter(Boolean)
-    : [];
-  const weapons = Array.isArray(entry.weapons)
-    ? entry.weapons.map((weapon, index) => normalizeWeapon(weapon, idFactory, index)).filter(Boolean)
-    : [];
+  const spells = normalizeAttackList(entry.spells, normalizeSpell, idFactory);
+  const weapons = normalizeAttackList(entry.weapons, normalizeWeapon, idFactory);
   const statBlock = type === "monster" ? normalizeMonsterStatBlock(entry) : null;
   const movementFeet = getCombatantSpeedFeet({ ...entry, ...(statBlock ? { statBlock } : {}) });
 
@@ -213,26 +244,27 @@ export const normalizeCreature = (entry, type, idFactory) => {
   };
 };
 
+const createDamageEntry = (attack) => ({
+  damageMin: attack.damageMin,
+  damageMax: attack.damageMax,
+  damageBonus: attack.damageBonus,
+});
+
 export const createSpellEntry = (spell) => ({
   name: spell.name,
   description: spell.description,
-  damageMin: spell.damageMin,
-  damageMax: spell.damageMax,
-  damageBonus: spell.damageBonus,
+  ...createDamageEntry(spell),
 });
 
 export const createWeaponEntry = (weapon) => ({
   name: weapon.name,
   description: weapon.description,
   ability: weapon.ability,
-  damageMin: weapon.damageMin,
-  damageMax: weapon.damageMax,
-  damageBonus: weapon.damageBonus,
+  ...createDamageEntry(weapon),
 });
 
-export const createQuickAccessEntry = (creature) => ({
+export const createCreatureEntry = (creature) => ({
   name: creature.name,
-  type: creature.type,
   maxHp: creature.maxHp,
   currentHp: creature.currentHp,
   armorClass: creature.armorClass,
@@ -241,6 +273,11 @@ export const createQuickAccessEntry = (creature) => ({
   ...(creature.type === "monster" ? { statBlock: normalizeMonsterStatBlock(creature) } : {}),
   spells: (creature.spells ?? []).map(createSpellEntry),
   weapons: (creature.weapons ?? []).map(createWeaponEntry),
+});
+
+export const createQuickAccessEntry = (creature) => ({
+  ...createCreatureEntry(creature),
+  type: creature.type,
 });
 
 export const getMonsterStatBlockSummary = (monster) => {

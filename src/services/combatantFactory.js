@@ -14,16 +14,29 @@ export class CombatantFactory {
     return {
       id: id || this.createId(nextOrder),
       ...formCombatant,
-      initiative:
-        !existing && formCombatant.type === "monster"
-          ? this.rollMonsterInitiative(formCombatant)
-          : formCombatant.initiative,
+      initiative: this.getFormInitiative(formCombatant, existing),
       damageDone: existing?.damageDone ?? 0,
-      conditions: existing?.conditions ?? normalizeConditions(formCombatant.conditions),
+      conditions: this.getFormConditions(formCombatant, existing),
       isDefeated: formCombatant.currentHp === 0,
       order: existing?.order ?? nextOrder,
-      battleMapPosition: existing?.battleMapPosition ?? createBattleMapPosition(formCombatant.type, nextOrder),
+      battleMapPosition: this.getFormBattleMapPosition(formCombatant, existing, nextOrder),
     };
+  }
+
+  getFormInitiative(formCombatant, existing) {
+    if (!existing && formCombatant.type === "monster") {
+      return this.rollMonsterInitiative(formCombatant);
+    }
+
+    return formCombatant.initiative;
+  }
+
+  getFormConditions(formCombatant, existing) {
+    return existing?.conditions ?? normalizeConditions(formCombatant.conditions);
+  }
+
+  getFormBattleMapPosition(formCombatant, existing, nextOrder) {
+    return existing?.battleMapPosition ?? createBattleMapPosition(formCombatant.type, nextOrder);
   }
 
   createFromQuickAccess(entry, { initiative, nextOrder }) {

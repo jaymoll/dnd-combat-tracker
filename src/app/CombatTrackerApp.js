@@ -1,6 +1,7 @@
 import { activeCombatantCanAct } from "../combat.js";
 import { BattleMapController } from "../controllers/BattleMapController.js";
 import { CombatantFormController } from "../controllers/CombatantFormController.js";
+import { EncounterDifficultyController } from "../controllers/EncounterDifficultyController.js";
 import { QuickAccessController } from "../controllers/QuickAccessController.js";
 import { RosterController } from "../controllers/RosterController.js";
 import { SpellFormController } from "../controllers/SpellFormController.js";
@@ -12,6 +13,15 @@ import { CombatTrackerRenderer } from "../renderers/CombatTrackerRenderer.js";
 import { CombatantFactory } from "../services/combatantFactory.js";
 import { clampNumber } from "../utils.js";
 
+const screenRoutes = {
+  encounter: "/",
+  "battle-map": "/battle-map",
+  "encounter-calculator": "/encounter-calculator",
+  management: "/management",
+};
+
+const routeScreens = Object.fromEntries(Object.entries(screenRoutes).map(([screen, route]) => [route, screen]));
+
 export class CombatTrackerApp {
   constructor({ elements, libraryRepository }) {
     this.elements = elements;
@@ -21,6 +31,10 @@ export class CombatTrackerApp {
     this.weaponFormController = new WeaponFormController(elements);
     this.targetController = new TargetController();
     this.quickAccessController = new QuickAccessController(libraryRepository, elements);
+    this.encounterDifficultyController = new EncounterDifficultyController(
+      elements,
+      () => this.quickAccessController.items.monster ?? [],
+    );
     this.turnController = new TurnController();
     this.combatantFactory = new CombatantFactory();
     this.rosterController = new RosterController(this.combatantFactory);
@@ -37,6 +51,7 @@ export class CombatTrackerApp {
 
   async init() {
     this.bindEvents();
+    this.showScreen(this.getScreenFromPath(), { updatePath: false });
     this.formController.syncMonsterFields();
     this.render();
     await this.quickAccessController.load();
@@ -44,10 +59,23 @@ export class CombatTrackerApp {
   }
 
   bindEvents() {
-    this.elements.form.addEventListener("submit", (event) => this.upsertCombatant(event));
+    this.bindScreenEvents();
+    this.bindBattleMapEvents();
+    this.bindCreatureFormEvents();
+    this.bindEncounterEvents();
+    this.bindSpellEvents();
+    this.bindWeaponEvents();
+    this.bindListEvents();
+  }
+
+  bindScreenEvents() {
     this.elements.screenButtons.forEach((button) => {
       button.addEventListener("click", () => this.showScreen(button.dataset.screenButton));
     });
+    window.addEventListener("popstate", () => this.showScreen(this.getScreenFromPath(), { updatePath: false }));
+  }
+
+  bindBattleMapEvents() {
     this.elements.battleMapGridType.addEventListener("change", () => this.changeBattleMapGrid());
     this.elements.battleMapWidth.addEventListener("change", () => this.resizeBattleMap());
     this.elements.battleMapHeight.addEventListener("change", () => this.resizeBattleMap());
@@ -55,19 +83,6 @@ export class CombatTrackerApp {
     this.elements.battleMapBoard.addEventListener("pointerdown", (event) =>
       this.battleMapController.startDrag(event, this.state),
     );
-    this.elements.libraryCreateButtons.forEach((button) => {
-      button.addEventListener("click", () => this.openLibraryCreatureModal(button.dataset.libraryCreate));
-    });
-    this.elements.openModalButton.addEventListener("click", () => this.openAddCreatureModal());
-    this.elements.closeModalButton.addEventListener("click", () => this.cancelForm());
-    this.elements.saveQuickAccessButton.addEventListener("click", () => this.saveFormToQuickAccess());
-    this.elements.cancelEditButton.addEventListener("click", () => this.cancelForm());
-    this.elements.startButton.addEventListener("click", () => this.startEncounter());
-    this.elements.resetButton.addEventListener("click", () => this.resetEncounter());
-    this.elements.damageForm.addEventListener("submit", (event) => this.applyDamage(event));
-    this.elements.rollAttackButton.addEventListener("click", () => this.rollAttack());
-    this.elements.castSpellButton.addEventListener("click", () => this.castSpell());
-    this.elements.nextTurnButton.addEventListener("click", () => this.nextTurn());
     this.elements.battleMapDamageForm.addEventListener("submit", (event) =>
       this.applyDamage(event, this.elements.battleMapDamage),
     );
@@ -78,23 +93,59 @@ export class CombatTrackerApp {
       this.castSpell(this.elements.battleMapSpell),
     );
     this.elements.battleMapNextTurnButton.addEventListener("click", () => this.nextTurn());
+  }
+
+  bindCreatureFormEvents() {
+    this.elements.form.addEventListener("submit", (event) => this.upsertCombatant(event));
+    this.elements.libraryCreateButtons.forEach((button) => {
+      button.addEventListener("click", () => this.openLibraryCreatureModal(button.dataset.libraryCreate));
+    });
+    this.elements.openModalButton.addEventListener("click", () => this.openAddCreatureModal());
+    this.elements.closeModalButton.addEventListener("click", () => this.cancelForm());
+    this.elements.saveQuickAccessButton.addEventListener("click", () => this.saveFormToQuickAccess());
+    this.elements.cancelEditButton.addEventListener("click", () => this.cancelForm());
+    this.elements.type.addEventListener("change", () => this.handleCreatureTypeChange());
+    this.elements.modal.addEventListener("cancel", () => this.formController.reset());
+    this.elements.modal.addEventListener("click", (event) =>
+      this.handleModalBackdropClick(event, this.elements.modal, this.formController),
+    );
+    this.elements.maxHp.addEventListener("input", () => this.syncCurrentHpLimit());
+  }
+
+  bindEncounterEvents() {
+    this.elements.startButton.addEventListener("click", () => this.startEncounter());
+    this.elements.resetButton.addEventListener("click", () => this.resetEncounter());
+    this.elements.damageForm.addEventListener("submit", (event) => this.applyDamage(event));
+    this.elements.rollAttackButton.addEventListener("click", () => this.rollAttack());
+    this.elements.castSpellButton.addEventListener("click", () => this.castSpell());
+    this.elements.nextTurnButton.addEventListener("click", () => this.nextTurn());
+  }
+
+  bindSpellEvents() {
     this.elements.openSpellModalButton.addEventListener("click", () => this.openAddSpellModal());
     this.elements.closeSpellModalButton.addEventListener("click", () => this.cancelSpellForm());
     this.elements.cancelSpellButton.addEventListener("click", () => this.cancelSpellForm());
     this.elements.spellForm.addEventListener("submit", (event) => this.upsertSpell(event));
     this.elements.spellDamageMin.addEventListener("input", () => this.spellFormController.syncDamageMaxLimit());
+    this.elements.spellModal.addEventListener("cancel", () => this.spellFormController.reset());
+    this.elements.spellModal.addEventListener("click", (event) =>
+      this.handleModalBackdropClick(event, this.elements.spellModal, this.spellFormController),
+    );
+  }
+
+  bindWeaponEvents() {
     this.elements.openWeaponModalButton.addEventListener("click", () => this.openAddWeaponModal());
     this.elements.closeWeaponModalButton.addEventListener("click", () => this.cancelWeaponForm());
     this.elements.cancelWeaponButton.addEventListener("click", () => this.cancelWeaponForm());
     this.elements.weaponForm.addEventListener("submit", (event) => this.upsertWeapon(event));
     this.elements.weaponDamageMin.addEventListener("input", () => this.weaponFormController.syncDamageMaxLimit());
-    this.elements.type.addEventListener("change", () => this.handleCreatureTypeChange());
-    this.elements.modal.addEventListener("cancel", () => this.formController.reset());
-    this.elements.modal.addEventListener("click", (event) => this.handleModalBackdropClick(event));
-    this.elements.spellModal.addEventListener("cancel", () => this.spellFormController.reset());
-    this.elements.spellModal.addEventListener("click", (event) => this.handleSpellModalBackdropClick(event));
     this.elements.weaponModal.addEventListener("cancel", () => this.weaponFormController.reset());
-    this.elements.weaponModal.addEventListener("click", (event) => this.handleWeaponModalBackdropClick(event));
+    this.elements.weaponModal.addEventListener("click", (event) =>
+      this.handleModalBackdropClick(event, this.elements.weaponModal, this.weaponFormController),
+    );
+  }
+
+  bindListEvents() {
     this.elements.rows.addEventListener("click", (event) => this.handleCombatantRowClick(event));
     this.elements.collapseToggleButtons.forEach((button) => {
       button.addEventListener("click", () => this.toggleList(button));
@@ -105,12 +156,13 @@ export class CombatTrackerApp {
     this.elements.managementMonsterQuickList.addEventListener("click", (event) => this.handleQuickAccessClick(event));
     this.elements.spellQuickList.addEventListener("click", (event) => this.handleSpellQuickAccessClick(event));
     this.elements.weaponQuickList.addEventListener("click", (event) => this.handleWeaponQuickAccessClick(event));
-    this.elements.maxHp.addEventListener("input", () => this.syncCurrentHpLimit());
+    this.encounterDifficultyController.bindEvents();
   }
 
   render() {
     this.turnController.prepareForRender(this.state);
     this.renderer.render(this.state, this.quickAccessController.items);
+    this.encounterDifficultyController.render();
   }
 
   openAddCreatureModal() {
@@ -156,55 +208,68 @@ export class CombatTrackerApp {
     this.weaponFormController.close();
   }
 
-  upsertCombatant(event) {
+  async upsertCombatant(event) {
     event.preventDefault();
 
     const formCombatant = this.formController.read();
     if (!formCombatant) return;
 
     if (this.formController.mode === "library") {
-      this.updateQuickAccessEntry(formCombatant);
+      await this.updateQuickAccessEntry(formCombatant);
       return;
     }
 
     if (this.formController.mode === "library-create") {
-      this.createQuickAccessEntry(formCombatant);
+      await this.createQuickAccessEntry(formCombatant);
       return;
     }
 
     this.rosterController.upsertFromForm(this.state, formCombatant, this.elements.combatantId.value);
-    this.formController.reset();
-    this.formController.close();
-    this.render();
+    this.closeCreatureFormAndRender();
   }
 
   async updateQuickAccessEntry(formCombatant) {
     const didSave = await this.quickAccessController.update(this.formController.libraryEditTarget, formCombatant);
     if (!didSave) return;
 
-    this.formController.reset();
-    this.formController.close();
-    this.render();
+    this.closeCreatureFormAndRender();
   }
 
   async createQuickAccessEntry(formCombatant) {
     const didSave = await this.quickAccessController.createFromForm(formCombatant);
     if (!didSave) return;
 
+    this.closeCreatureFormAndRender();
+  }
+
+  closeCreatureFormAndRender() {
     this.formController.reset();
     this.formController.close();
     this.render();
   }
 
-  showScreen(screenName) {
+  showScreen(screenName, { updatePath = true } = {}) {
+    const nextScreenName = screenRoutes[screenName] ? screenName : "encounter";
+
     this.elements.screens.forEach((screen) => {
-      screen.hidden = screen.dataset.screen !== screenName;
+      screen.hidden = screen.dataset.screen !== nextScreenName;
     });
     this.elements.screenButtons.forEach((button) => {
-      const isActive = button.dataset.screenButton === screenName;
+      const isActive = button.dataset.screenButton === nextScreenName;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", String(isActive));
     });
+
+    if (updatePath) {
+      const nextPath = screenRoutes[nextScreenName];
+      if (window.location.pathname !== nextPath) {
+        window.history.pushState({}, "", nextPath);
+      }
+    }
+  }
+
+  getScreenFromPath() {
+    return routeScreens[window.location.pathname] ?? "encounter";
   }
 
   changeBattleMapGrid() {
@@ -247,45 +312,42 @@ export class CombatTrackerApp {
 
   async upsertSpell(event) {
     event.preventDefault();
-    if (this.state.hasStarted) return;
-
-    const spell = this.spellFormController.read();
-    if (!spell) {
-      this.elements.spellName.focus();
-      return;
-    }
-
-    const id = this.elements.spellId.value;
-    const didSave = id
-      ? await this.quickAccessController.updateSpell(id, spell)
-      : await this.quickAccessController.createSpell(spell);
-
-    if (!didSave) return;
-
-    this.spellFormController.reset();
-    this.spellFormController.close();
-    this.render();
+    await this.saveLibraryAttackItem({
+      controller: this.spellFormController,
+      idInput: this.elements.spellId,
+      nameInput: this.elements.spellName,
+      create: (spell) => this.quickAccessController.createSpell(spell),
+      update: (id, spell) => this.quickAccessController.updateSpell(id, spell),
+    });
   }
 
   async upsertWeapon(event) {
     event.preventDefault();
+    await this.saveLibraryAttackItem({
+      controller: this.weaponFormController,
+      idInput: this.elements.weaponId,
+      nameInput: this.elements.weaponName,
+      create: (weapon) => this.quickAccessController.createWeapon(weapon),
+      update: (id, weapon) => this.quickAccessController.updateWeapon(id, weapon),
+    });
+  }
+
+  async saveLibraryAttackItem({ controller, idInput, nameInput, create, update }) {
     if (this.state.hasStarted) return;
 
-    const weapon = this.weaponFormController.read();
-    if (!weapon) {
-      this.elements.weaponName.focus();
+    const item = controller.read();
+    if (!item) {
+      nameInput.focus();
       return;
     }
 
-    const id = this.elements.weaponId.value;
-    const didSave = id
-      ? await this.quickAccessController.updateWeapon(id, weapon)
-      : await this.quickAccessController.createWeapon(weapon);
+    const id = idInput.value;
+    const didSave = id ? await update(id, item) : await create(item);
 
     if (!didSave) return;
 
-    this.weaponFormController.reset();
-    this.weaponFormController.close();
+    controller.reset();
+    controller.close();
     this.render();
   }
 
@@ -319,9 +381,8 @@ export class CombatTrackerApp {
 
   applyDamage(event, damageInput = this.elements.damage) {
     event.preventDefault();
-    if (!activeCombatantCanAct(this.state)) return;
 
-    const targetId = this.targetController.selectedId;
+    const targetId = this.getSelectedTargetIdForAction();
     if (!targetId) return;
 
     const result = this.turnController.applyDamage(
@@ -338,9 +399,7 @@ export class CombatTrackerApp {
   }
 
   rollAttack(weaponInput = this.elements.weapon) {
-    if (!activeCombatantCanAct(this.state)) return;
-
-    const targetId = this.targetController.selectedId;
+    const targetId = this.getSelectedTargetIdForAction();
     if (!targetId) return;
 
     const result = this.turnController.rollAttack(
@@ -352,9 +411,7 @@ export class CombatTrackerApp {
   }
 
   castSpell(spellInput = this.elements.spell) {
-    if (!activeCombatantCanAct(this.state)) return;
-
-    const targetId = this.targetController.selectedId;
+    const targetId = this.getSelectedTargetIdForAction();
     if (!targetId) return;
 
     const result = this.turnController.castSpell(
@@ -363,6 +420,11 @@ export class CombatTrackerApp {
       spellInput.value,
     );
     if (result) this.finishAttack(result);
+  }
+
+  getSelectedTargetIdForAction() {
+    if (!activeCombatantCanAct(this.state)) return "";
+    return this.targetController.selectedId;
   }
 
   finishAttack(result) {
@@ -411,25 +473,11 @@ export class CombatTrackerApp {
     this.formController.renderState(this.state);
   }
 
-  handleModalBackdropClick(event) {
-    if (event.target !== this.elements.modal) return;
+  handleModalBackdropClick(event, modal, controller) {
+    if (event.target !== modal) return;
 
-    this.formController.reset();
-    this.formController.close();
-  }
-
-  handleSpellModalBackdropClick(event) {
-    if (event.target !== this.elements.spellModal) return;
-
-    this.spellFormController.reset();
-    this.spellFormController.close();
-  }
-
-  handleWeaponModalBackdropClick(event) {
-    if (event.target !== this.elements.weaponModal) return;
-
-    this.weaponFormController.reset();
-    this.weaponFormController.close();
+    controller.reset();
+    controller.close();
   }
 
   toggleList(button) {
@@ -450,100 +498,114 @@ export class CombatTrackerApp {
 
   handleCombatantRowClick(event) {
     const button = event.target.closest("button");
-    const conditionMenu = event.target.closest(".condition-menu");
 
+    if (this.handleConditionButton(button)) return;
+
+    if (this.state.hasStarted) {
+      this.handleStartedCombatantRowClick(event, button);
+      return;
+    }
+
+    this.handleSetupCombatantRowClick(button);
+  }
+
+  handleConditionButton(button) {
     if (button?.dataset.action === "apply-condition") {
       this.applyCondition(button.dataset.id, button.dataset.condition);
-      return;
+      return true;
     }
 
     if (button?.dataset.action === "remove-condition") {
       this.removeCondition(button.dataset.id, button.dataset.condition);
-      return;
+      return true;
     }
 
-    if (this.state.hasStarted) {
-      const row = event.target.closest("tr[data-id]");
-      if (!row || button || conditionMenu || !this.targetController.select(row.dataset.id, this.state)) return;
+    return false;
+  }
 
-      this.renderer.renderTurnPanel(this.state);
-      this.renderer.renderRows(this.state);
-      return;
-    }
+  handleStartedCombatantRowClick(event, button) {
+    const row = event.target.closest("tr[data-id]");
+    const conditionMenu = event.target.closest(".condition-menu");
 
+    if (!row || button || conditionMenu || !this.targetController.select(row.dataset.id, this.state)) return;
+
+    this.renderer.renderTurnPanel(this.state);
+    this.renderer.renderRows(this.state);
+  }
+
+  handleSetupCombatantRowClick(button) {
     if (!button) return;
 
     const id = button.dataset.id;
     const combatant = this.rosterController.find(this.state, id);
     if (!combatant) return;
 
-    if (button.dataset.action === "edit") {
-      this.formController.fillCombatant(combatant);
-      this.formController.renderState(this.state);
-    }
-
-    if (button.dataset.action === "remove") {
-      this.removeCombatant(id);
+    switch (button.dataset.action) {
+      case "edit":
+        this.formController.fillCombatant(combatant);
+        this.formController.renderState(this.state);
+        break;
+      case "remove":
+        this.removeCombatant(id);
+        break;
     }
   }
 
   async handleQuickAccessClick(event) {
-    const button = event.target.closest("button");
-    if (!button || this.state.hasStarted) return;
+    const button = this.getQuickAccessButton(event);
+    if (!button) return;
 
     const { action, id, type } = button.dataset;
     const entry = this.quickAccessController.find(type, id);
     if (!entry) return;
 
-    if (action === "add-quick") {
-      this.addCombatantFromQuickAccess(entry);
+    switch (action) {
+      case "add-quick":
+        this.addCombatantFromQuickAccess(entry);
+        break;
+      case "edit-quick":
+        this.formController.fillLibraryEntry(entry, type);
+        this.formController.renderState(this.state);
+        break;
+      case "remove-quick":
+        await this.quickAccessController.remove(type, id);
+        this.render();
+        break;
+    }
+  }
+
+  async handleSpellQuickAccessClick(event) {
+    await this.handleAttackQuickAccessClick(event, "spell", this.spellFormController);
+  }
+
+  async handleWeaponQuickAccessClick(event) {
+    await this.handleAttackQuickAccessClick(event, "weapon", this.weaponFormController);
+  }
+
+  async handleAttackQuickAccessClick(event, type, formController) {
+    const button = this.getQuickAccessButton(event);
+    if (!button) return;
+
+    const { action, id } = button.dataset;
+    const item = this.quickAccessController.find(type, id);
+    if (!item) return;
+
+    if (action === `edit-${type}`) {
+      formController.fill(item);
+      return;
     }
 
-    if (action === "edit-quick") {
-      this.formController.fillLibraryEntry(entry, type);
-      this.formController.renderState(this.state);
-    }
-
-    if (action === "remove-quick") {
+    if (action === `remove-${type}`) {
       await this.quickAccessController.remove(type, id);
       this.render();
     }
   }
 
-  async handleSpellQuickAccessClick(event) {
+  getQuickAccessButton(event) {
     const button = event.target.closest("button");
     if (!button || this.state.hasStarted) return;
 
-    const { action, id } = button.dataset;
-    const spell = this.quickAccessController.find("spell", id);
-    if (!spell) return;
-
-    if (action === "edit-spell") {
-      this.spellFormController.fill(spell);
-    }
-
-    if (action === "remove-spell") {
-      await this.quickAccessController.remove("spell", id);
-      this.render();
-    }
-  }
-
-  async handleWeaponQuickAccessClick(event) {
-    const button = event.target.closest("button");
-    if (!button || this.state.hasStarted) return;
-
-    const { action, id } = button.dataset;
-    const weapon = this.quickAccessController.find("weapon", id);
-    if (!weapon) return;
-
-    if (action === "edit-weapon") {
-      this.weaponFormController.fill(weapon);
-    }
-
-    if (action === "remove-weapon") {
-      await this.quickAccessController.remove("weapon", id);
-      this.render();
-    }
+    return button;
   }
 
   removeCombatant(id) {

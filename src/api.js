@@ -1,6 +1,6 @@
-export const libraryApiPath = "/api/library";
+const libraryApiPath = "/api/library";
 
-export const requestJson = async (url, options = {}) => {
+const requestJson = async (url, options = {}) => {
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",

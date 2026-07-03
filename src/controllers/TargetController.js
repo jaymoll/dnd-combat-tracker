@@ -20,10 +20,6 @@ export class TargetController {
     return true;
   }
 
-  set(id) {
-    this.selectedId = id;
-  }
-
   clear() {
     this.selectedId = "";
   }

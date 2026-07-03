@@ -1,52 +1,39 @@
 import { hasRequiredSides } from "../combat.js";
-import { DEFAULT_MOVEMENT_FEET, getCombatantSpeedFeet, normalizeMonsterStatBlock } from "../models.js";
-import { clampNumber, escapeHtml, parseInteger } from "../utils.js";
-
-const monsterStatBlockInputs = (elements) => [
-  elements.monsterSize,
-  elements.monsterCreatureType,
-  elements.monsterAlignment,
-  elements.monsterSpeed,
-  elements.monsterStrength,
-  elements.monsterDexterity,
-  elements.monsterConstitution,
-  elements.monsterIntelligence,
-  elements.monsterWisdom,
-  elements.monsterCharisma,
-  elements.monsterSpellcastingAbility,
-  elements.monsterSavingThrows,
-  elements.monsterSkills,
-  elements.monsterDamageVulnerabilities,
-  elements.monsterDamageResistances,
-  elements.monsterDamageImmunities,
-  elements.monsterConditionImmunities,
-  elements.monsterSenses,
-  elements.monsterLanguages,
-  elements.monsterChallengeRating,
-  elements.monsterTraits,
-  elements.monsterActions,
-  elements.monsterReactions,
-  elements.monsterLegendaryActions,
-];
+import {
+  createSpellEntry,
+  createWeaponEntry,
+  DEFAULT_MOVEMENT_FEET,
+  getCombatantSpeedFeet,
+} from "../models.js";
+import { AssignmentListController } from "./AssignmentListController.js";
+import { MonsterStatBlockFields } from "./MonsterStatBlockFields.js";
+import { clampNumber, parseInteger } from "../utils.js";
 
 export class CombatantFormController {
   mode = "encounter";
   libraryEditTarget = null;
-  availableSpells = [];
-  availableWeapons = [];
 
   constructor(elements) {
     this.elements = elements;
+    this.monsterStatBlockFields = new MonsterStatBlockFields(elements);
+    this.spellAssignments = new AssignmentListController({
+      listElement: elements.spellAssignmentList,
+      emptyElement: elements.emptySpellAssignmentList,
+      keyFields: ["name", "damageMin", "damageMax", "damageBonus"],
+    });
+    this.weaponAssignments = new AssignmentListController({
+      listElement: elements.weaponAssignmentList,
+      emptyElement: elements.emptyWeaponAssignmentList,
+      keyFields: ["name", "ability", "damageMin", "damageMax", "damageBonus"],
+    });
   }
 
   setAvailableSpells(spells) {
-    this.availableSpells = spells ?? [];
-    this.renderSpellAssignments();
+    this.spellAssignments.setAvailableItems(spells);
   }
 
   setAvailableWeapons(weapons) {
-    this.availableWeapons = weapons ?? [];
-    this.renderWeaponAssignments();
+    this.weaponAssignments.setAvailableItems(weapons);
   }
 
   syncMonsterFields() {
@@ -57,10 +44,7 @@ export class CombatantFormController {
       this.ensureMonsterStatBlockDefaults();
     }
 
-    monsterStatBlockInputs(this.elements).forEach((input) => {
-      input.disabled = !isMonster;
-      input.required = false;
-    });
+    this.monsterStatBlockFields.setMonsterEnabled(isMonster);
   }
 
   open(mode = "add") {
@@ -92,31 +76,8 @@ export class CombatantFormController {
     const movementFeet = clampNumber(this.elements.movementFeet.value, 5);
     const isMonster = this.elements.type.value === "monster";
     const name = this.elements.name.value.trim();
-    const weapons = Array.from(
-      this.elements.weaponAssignmentList.querySelectorAll("input[type='checkbox']:checked"),
-    )
-      .map((input) => this.availableWeapons[Number(input.value)])
-      .filter(Boolean)
-      .map((weapon) => ({
-        name: weapon.name,
-        description: weapon.description,
-        ability: weapon.ability,
-        damageMin: weapon.damageMin,
-        damageMax: weapon.damageMax,
-        damageBonus: weapon.damageBonus,
-      }));
-    const spells = Array.from(
-      this.elements.spellAssignmentList.querySelectorAll("input[type='checkbox']:checked"),
-    )
-      .map((input) => this.availableSpells[Number(input.value)])
-      .filter(Boolean)
-      .map((spell) => ({
-        name: spell.name,
-        description: spell.description,
-        damageMin: spell.damageMin,
-        damageMax: spell.damageMax,
-        damageBonus: spell.damageBonus,
-      }));
+    const weapons = this.weaponAssignments.getSelectedItems().map(createWeaponEntry);
+    const spells = this.spellAssignments.getSelectedItems().map(createSpellEntry);
 
     if (!name) return null;
 
@@ -136,32 +97,7 @@ export class CombatantFormController {
   }
 
   readMonsterStatBlock() {
-    return normalizeMonsterStatBlock({
-      size: this.elements.monsterSize.value,
-      creatureType: this.elements.monsterCreatureType.value,
-      alignment: this.elements.monsterAlignment.value,
-      speed: this.elements.monsterSpeed.value,
-      strength: this.elements.monsterStrength.value,
-      dexterity: this.elements.monsterDexterity.value,
-      constitution: this.elements.monsterConstitution.value,
-      intelligence: this.elements.monsterIntelligence.value,
-      wisdom: this.elements.monsterWisdom.value,
-      charisma: this.elements.monsterCharisma.value,
-      spellcastingAbility: this.elements.monsterSpellcastingAbility.value,
-      savingThrows: this.elements.monsterSavingThrows.value,
-      skills: this.elements.monsterSkills.value,
-      damageVulnerabilities: this.elements.monsterDamageVulnerabilities.value,
-      damageResistances: this.elements.monsterDamageResistances.value,
-      damageImmunities: this.elements.monsterDamageImmunities.value,
-      conditionImmunities: this.elements.monsterConditionImmunities.value,
-      senses: this.elements.monsterSenses.value,
-      languages: this.elements.monsterLanguages.value,
-      challengeRating: this.elements.monsterChallengeRating.value,
-      traits: this.elements.monsterTraits.value,
-      actions: this.elements.monsterActions.value,
-      reactions: this.elements.monsterReactions.value,
-      legendaryActions: this.elements.monsterLegendaryActions.value,
-    });
+    return this.monsterStatBlockFields.read();
   }
 
   reset() {
@@ -180,8 +116,8 @@ export class CombatantFormController {
     this.elements.movementFeet.value = DEFAULT_MOVEMENT_FEET;
     this.clearMonsterStatBlockFields();
     this.elements.saveQuickAccessButton.hidden = false;
-    this.renderWeaponAssignments();
-    this.renderSpellAssignments();
+    this.weaponAssignments.render();
+    this.spellAssignments.render();
     this.syncMonsterFields();
   }
 
@@ -219,155 +155,72 @@ export class CombatantFormController {
     this.elements.armorClass.value = creature.armorClass;
     this.elements.movementFeet.value = getCombatantSpeedFeet(creature);
     this.fillMonsterStatBlockFields(creature);
-    this.renderWeaponAssignments(creature.weapons ?? []);
-    this.renderSpellAssignments(creature.spells ?? []);
+    this.weaponAssignments.render(creature.weapons ?? []);
+    this.spellAssignments.render(creature.spells ?? []);
     this.syncMonsterFields();
   }
 
   ensureMonsterStatBlockDefaults() {
-    const defaults = normalizeMonsterStatBlock({});
-    if (!this.elements.monsterSize.value) this.elements.monsterSize.value = defaults.size;
-    if (!this.elements.monsterCreatureType.value) this.elements.monsterCreatureType.value = defaults.creatureType;
-    if (!this.elements.monsterAlignment.value) this.elements.monsterAlignment.value = defaults.alignment;
-    if (!this.elements.monsterSpeed.value) this.elements.monsterSpeed.value = defaults.speed;
-    if (!this.elements.monsterStrength.value) this.elements.monsterStrength.value = defaults.strength;
-    if (!this.elements.monsterDexterity.value) this.elements.monsterDexterity.value = defaults.dexterity;
-    if (!this.elements.monsterConstitution.value) this.elements.monsterConstitution.value = defaults.constitution;
-    if (!this.elements.monsterIntelligence.value) this.elements.monsterIntelligence.value = defaults.intelligence;
-    if (!this.elements.monsterWisdom.value) this.elements.monsterWisdom.value = defaults.wisdom;
-    if (!this.elements.monsterCharisma.value) this.elements.monsterCharisma.value = defaults.charisma;
-    if (!this.elements.monsterSpellcastingAbility.value) {
-      this.elements.monsterSpellcastingAbility.value = defaults.spellcastingAbility;
-    }
-    if (!this.elements.monsterSenses.value) this.elements.monsterSenses.value = defaults.senses;
-    if (!this.elements.monsterChallengeRating.value) {
-      this.elements.monsterChallengeRating.value = defaults.challengeRating;
-    }
+    this.monsterStatBlockFields.ensureDefaults();
   }
 
   clearMonsterStatBlockFields() {
-    monsterStatBlockInputs(this.elements).forEach((input) => {
-      input.value = "";
-    });
+    this.monsterStatBlockFields.reset();
   }
 
   fillMonsterStatBlockFields(creature) {
-    const statBlock = normalizeMonsterStatBlock(creature);
-
-    this.elements.monsterSize.value = statBlock.size;
-    this.elements.monsterCreatureType.value = statBlock.creatureType;
-    this.elements.monsterAlignment.value = statBlock.alignment;
-    this.elements.monsterSpeed.value = statBlock.speed;
-    this.elements.monsterStrength.value = statBlock.strength;
-    this.elements.monsterDexterity.value = statBlock.dexterity;
-    this.elements.monsterConstitution.value = statBlock.constitution;
-    this.elements.monsterIntelligence.value = statBlock.intelligence;
-    this.elements.monsterWisdom.value = statBlock.wisdom;
-    this.elements.monsterCharisma.value = statBlock.charisma;
-    this.elements.monsterSpellcastingAbility.value = statBlock.spellcastingAbility;
-    this.elements.monsterSavingThrows.value = statBlock.savingThrows;
-    this.elements.monsterSkills.value = statBlock.skills;
-    this.elements.monsterDamageVulnerabilities.value = statBlock.damageVulnerabilities;
-    this.elements.monsterDamageResistances.value = statBlock.damageResistances;
-    this.elements.monsterDamageImmunities.value = statBlock.damageImmunities;
-    this.elements.monsterConditionImmunities.value = statBlock.conditionImmunities;
-    this.elements.monsterSenses.value = statBlock.senses;
-    this.elements.monsterLanguages.value = statBlock.languages;
-    this.elements.monsterChallengeRating.value = statBlock.challengeRating;
-    this.elements.monsterTraits.value = statBlock.traits;
-    this.elements.monsterActions.value = statBlock.actions;
-    this.elements.monsterReactions.value = statBlock.reactions;
-    this.elements.monsterLegendaryActions.value = statBlock.legendaryActions;
-  }
-
-  renderSpellAssignments(selectedSpells = this.getSelectedSpellsFromForm()) {
-    const selectedKeys = new Set(selectedSpells.map((spell) => this.getSpellKey(spell)));
-
-    this.elements.emptySpellAssignmentList.hidden = this.availableSpells.length > 0;
-    this.elements.spellAssignmentList.innerHTML = this.availableSpells
-      .map(
-        (spell, index) => `<label class="spell-choice">
-          <input type="checkbox" value="${index}" ${selectedKeys.has(this.getSpellKey(spell)) ? "checked" : ""} />
-          <span>${escapeHtml(spell.name)}</span>
-        </label>`,
-      )
-      .join("");
-  }
-
-  renderWeaponAssignments(selectedWeapons = this.getSelectedWeaponsFromForm()) {
-    const selectedKeys = new Set(selectedWeapons.map((weapon) => this.getWeaponKey(weapon)));
-
-    this.elements.emptyWeaponAssignmentList.hidden = this.availableWeapons.length > 0;
-    this.elements.weaponAssignmentList.innerHTML = this.availableWeapons
-      .map(
-        (weapon, index) => `<label class="spell-choice">
-          <input type="checkbox" value="${index}" ${selectedKeys.has(this.getWeaponKey(weapon)) ? "checked" : ""} />
-          <span>${escapeHtml(weapon.name)}</span>
-        </label>`,
-      )
-      .join("");
-  }
-
-  getSelectedWeaponsFromForm() {
-    return Array.from(this.elements.weaponAssignmentList.querySelectorAll("input[type='checkbox']:checked"))
-      .map((input) => this.availableWeapons[Number(input.value)])
-      .filter(Boolean);
-  }
-
-  getSelectedSpellsFromForm() {
-    return Array.from(this.elements.spellAssignmentList.querySelectorAll("input[type='checkbox']:checked"))
-      .map((input) => this.availableSpells[Number(input.value)])
-      .filter(Boolean);
-  }
-
-  getSpellKey(spell) {
-    return [spell.name, spell.damageMin, spell.damageMax, spell.damageBonus].join("|");
-  }
-
-  getWeaponKey(weapon) {
-    return [weapon.name, weapon.ability, weapon.damageMin, weapon.damageMax, weapon.damageBonus].join("|");
+    this.monsterStatBlockFields.fill(creature);
   }
 
   renderState(state) {
     const setupDisabled = state.hasStarted;
+
+    this.setCreatureFieldsDisabled(setupDisabled);
+    this.setAssignmentInputsDisabled(setupDisabled);
+    this.setSetupControlsDisabled(setupDisabled);
+    this.renderStartRequirement(state);
+  }
+
+  setCreatureFieldsDisabled(setupDisabled) {
     this.elements.name.disabled = setupDisabled;
-    this.elements.type.disabled = setupDisabled || this.mode === "library" || this.mode === "library-create";
+    this.elements.type.disabled = setupDisabled || this.isLibraryMode();
     this.elements.maxHp.disabled = setupDisabled;
     this.elements.currentHp.disabled = setupDisabled;
     this.elements.initiative.disabled =
       setupDisabled ||
-      this.mode === "library" ||
-      this.mode === "library-create" ||
+      this.isLibraryMode() ||
       (this.elements.type.value === "monster" && !this.elements.combatantId.value);
     this.elements.attacksPerTurn.disabled = setupDisabled;
     this.elements.armorClass.disabled = setupDisabled;
     this.elements.movementFeet.disabled = setupDisabled;
-    monsterStatBlockInputs(this.elements).forEach((input) => {
-      input.disabled = setupDisabled || this.elements.type.value !== "monster";
-    });
-    this.elements.weaponAssignmentList
-      .querySelectorAll("input")
-      .forEach((input) => {
-        input.disabled = setupDisabled;
-      });
-    this.elements.spellAssignmentList
-      .querySelectorAll("input")
-      .forEach((input) => {
-        input.disabled = setupDisabled;
-      });
+    this.monsterStatBlockFields.setDisabled(setupDisabled || this.elements.type.value !== "monster");
+  }
+
+  setAssignmentInputsDisabled(setupDisabled) {
+    this.weaponAssignments.setDisabled(setupDisabled);
+    this.spellAssignments.setDisabled(setupDisabled);
+  }
+
+  setSetupControlsDisabled(setupDisabled) {
     this.elements.openModalButton.disabled = setupDisabled;
     this.elements.libraryCreateButtons.forEach((button) => {
       button.disabled = setupDisabled;
     });
     this.elements.saveButton.disabled = setupDisabled;
     this.elements.saveQuickAccessButton.disabled = setupDisabled;
-    this.elements.saveQuickAccessButton.hidden = this.mode === "library" || this.mode === "library-create";
+    this.elements.saveQuickAccessButton.hidden = this.isLibraryMode();
     this.elements.cancelEditButton.disabled = setupDisabled;
+  }
 
+  renderStartRequirement(state) {
     const canStart = !state.hasStarted && hasRequiredSides(state);
     this.elements.startButton.disabled = !canStart;
     this.elements.requirement.textContent = canStart
       ? "Ready to begin."
       : "Start requires at least one character and one monster.";
+  }
+
+  isLibraryMode() {
+    return this.mode === "library" || this.mode === "library-create";
   }
 }

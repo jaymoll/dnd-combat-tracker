@@ -35,128 +35,75 @@ export class QuickAccessController {
   }
 
   async createFromForm(formCombatant) {
-    try {
-      this.quickAccess = await this.repository.createEntry(
+    return this.saveLibraryChange(() =>
+      this.repository.createEntry(
         formCombatant.type,
         createQuickAccessEntry(formCombatant),
-      );
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+      ),
+    );
   }
 
   async createSpell(spell) {
-    try {
-      this.quickAccess = await this.repository.createEntry("spell", createSpellEntry(spell));
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+    return this.saveLibraryChange(() => this.repository.createEntry("spell", createSpellEntry(spell)));
   }
 
   async createWeapon(weapon) {
-    try {
-      this.quickAccess = await this.repository.createEntry("weapon", createWeaponEntry(weapon));
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+    return this.saveLibraryChange(() => this.repository.createEntry("weapon", createWeaponEntry(weapon)));
   }
 
   async update(target, formCombatant) {
     if (!target) return false;
 
-    try {
-      this.quickAccess = await this.repository.updateEntry(
+    return this.saveLibraryChange(() =>
+      this.repository.updateEntry(
         target.type,
         target.id,
         createQuickAccessEntry(formCombatant),
-      );
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+      ),
+    );
   }
 
   async updateSpell(id, spell) {
-    try {
-      this.quickAccess = await this.repository.updateEntry("spell", id, createSpellEntry(spell));
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+    return this.saveLibraryChange(() => this.repository.updateEntry("spell", id, createSpellEntry(spell)));
   }
 
   async updateWeapon(id, weapon) {
-    try {
-      this.quickAccess = await this.repository.updateEntry("weapon", id, createWeaponEntry(weapon));
-      this.setStatus("Server storage connected");
-      return true;
-    } catch {
-      this.setStatus("Save failed");
-      return false;
-    }
+    return this.saveLibraryChange(() => this.repository.updateEntry("weapon", id, createWeaponEntry(weapon)));
   }
 
   async remove(type, id) {
+    return this.saveLibraryChange(() => this.repository.deleteEntry(type, id), "Remove failed");
+  }
+
+  async saveLibraryChange(action, failureMessage = "Save failed") {
     try {
-      this.quickAccess = await this.repository.deleteEntry(type, id);
+      this.quickAccess = await action();
       this.setStatus("Server storage connected");
       return true;
     } catch {
-      this.setStatus("Remove failed");
+      this.setStatus(failureMessage);
       return false;
     }
   }
 
   normalizeLibrary(library) {
-    return {
-      character: (library.character ?? [])
-        .map((entry) => this.normalizeEntry(entry, "character"))
-        .filter(Boolean),
-      monster: (library.monster ?? [])
-        .map((entry) => this.normalizeEntry(entry, "monster"))
-        .filter(Boolean),
-      spell: (library.spell ?? [])
-        .map((entry) => this.normalizeSpellEntry(entry))
-        .filter(Boolean),
-      weapon: (library.weapon ?? [])
-        .map((entry) => this.normalizeWeaponEntry(entry))
-        .filter(Boolean),
-    };
+    return Object.fromEntries(
+      ["character", "monster", "spell", "weapon"].map((type) => [
+        type,
+        (library[type] ?? []).map((entry) => this.normalizeEntry(entry, type)).filter(Boolean),
+      ]),
+    );
   }
 
   normalizeEntry(entry, type) {
-    return normalizeCreature(
-      entry,
-      type,
-      (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
+    const idFactory = this.createQuickAccessId;
+    if (type === "spell") return normalizeSpell(entry, idFactory);
+    if (type === "weapon") return normalizeWeapon(entry, idFactory);
+    return normalizeCreature(entry, type, idFactory);
   }
 
-  normalizeSpellEntry(entry) {
-    return normalizeSpell(
-      entry,
-      (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
-  }
-
-  normalizeWeaponEntry(entry) {
-    return normalizeWeapon(
-      entry,
-      (entryType) => `quick-${entryType}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    );
+  createQuickAccessId(type) {
+    return `quick-${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
   setStatus(message) {
