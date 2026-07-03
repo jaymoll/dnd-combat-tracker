@@ -47,7 +47,7 @@ export class CombatTrackerRenderer {
   renderQuickAccess(quickAccess, state) {
     [
       [quickAccess.character, "character", this.elements.characterQuickList, this.elements.emptyCharacterQuickList, ["add"]],
-      [quickAccess.monster, "monster", this.elements.monsterQuickList, this.elements.emptyMonsterQuickList, ["add"]],
+      [quickAccess.monster, "monster", this.elements.monsterQuickList, this.elements.emptyMonsterQuickList, ["add"], state.isFinished],
       [
         quickAccess.character,
         "character",
@@ -62,8 +62,15 @@ export class CombatTrackerRenderer {
         this.elements.emptyManagementMonsterQuickList,
         ["edit", "remove"],
       ],
-    ].forEach(([items, type, listElement, emptyElement, actions]) => {
-      this.renderQuickAccessList(items, type, listElement, emptyElement, state.hasStarted, actions);
+    ].forEach(([items, type, listElement, emptyElement, actions, disabledOverride]) => {
+      this.renderQuickAccessList(
+        items,
+        type,
+        listElement,
+        emptyElement,
+        disabledOverride ?? state.hasStarted,
+        actions,
+      );
     });
 
     this.renderAttackQuickAccessList(

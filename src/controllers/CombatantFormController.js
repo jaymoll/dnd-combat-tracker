@@ -53,11 +53,14 @@ export class CombatantFormController {
         ? "Add Saved Creature"
         : mode === "library"
           ? "Edit Saved Creature"
+          : mode === "reinforcement"
+            ? "Add Reinforcement"
           : mode === "edit"
             ? "Edit Creature"
             : "Add Creature";
-    this.elements.saveButton.textContent = mode === "add" ? "Add" : "Save";
-    this.elements.saveQuickAccessButton.hidden = mode === "library" || mode === "library-create";
+    this.elements.saveButton.textContent = mode === "add" || mode === "reinforcement" ? "Add" : "Save";
+    this.elements.saveQuickAccessButton.hidden =
+      mode === "library" || mode === "library-create" || mode === "reinforcement";
     this.elements.modal.showModal();
     this.elements.name.focus();
   }
@@ -143,6 +146,13 @@ export class CombatantFormController {
     this.syncMonsterFields();
   }
 
+  prepareReinforcementCreate() {
+    this.reset();
+    this.mode = "reinforcement";
+    this.elements.type.value = "monster";
+    this.syncMonsterFields();
+  }
+
   fillCreatureFields(creature) {
     this.elements.combatantId.value = creature.id;
     this.elements.name.value = creature.name;
@@ -173,17 +183,20 @@ export class CombatantFormController {
   }
 
   renderState(state) {
-    const setupDisabled = state.hasStarted;
+    const canAddReinforcement = state.hasStarted && !state.isFinished;
+    const setupDisabled = state.isFinished || (state.hasStarted && !this.isReinforcementMode());
 
     this.setCreatureFieldsDisabled(setupDisabled);
     this.setAssignmentInputsDisabled(setupDisabled);
-    this.setSetupControlsDisabled(setupDisabled);
+    this.setSetupControlsDisabled(state.hasStarted, canAddReinforcement);
     this.renderStartRequirement(state);
   }
 
   setCreatureFieldsDisabled(setupDisabled) {
+    const isReinforcement = this.isReinforcementMode();
+
     this.elements.name.disabled = setupDisabled;
-    this.elements.type.disabled = setupDisabled || this.isLibraryMode();
+    this.elements.type.disabled = setupDisabled || this.isLibraryMode() || isReinforcement;
     this.elements.maxHp.disabled = setupDisabled;
     this.elements.currentHp.disabled = setupDisabled;
     this.elements.initiative.disabled =
@@ -201,15 +214,16 @@ export class CombatantFormController {
     this.spellAssignments.setDisabled(setupDisabled);
   }
 
-  setSetupControlsDisabled(setupDisabled) {
-    this.elements.openModalButton.disabled = setupDisabled;
+  setSetupControlsDisabled(setupDisabled, canAddReinforcement) {
+    this.elements.openModalButton.disabled = setupDisabled && !canAddReinforcement;
+    this.elements.openModalButton.textContent = canAddReinforcement ? "Add Reinforcement" : "Add Creature";
     this.elements.libraryCreateButtons.forEach((button) => {
       button.disabled = setupDisabled;
     });
-    this.elements.saveButton.disabled = setupDisabled;
+    this.elements.saveButton.disabled = setupDisabled && !this.isReinforcementMode();
     this.elements.saveQuickAccessButton.disabled = setupDisabled;
-    this.elements.saveQuickAccessButton.hidden = this.isLibraryMode();
-    this.elements.cancelEditButton.disabled = setupDisabled;
+    this.elements.saveQuickAccessButton.hidden = this.isLibraryMode() || this.isReinforcementMode();
+    this.elements.cancelEditButton.disabled = setupDisabled && !this.isReinforcementMode();
   }
 
   renderStartRequirement(state) {
@@ -222,5 +236,9 @@ export class CombatantFormController {
 
   isLibraryMode() {
     return this.mode === "library" || this.mode === "library-create";
+  }
+
+  isReinforcementMode() {
+    return this.mode === "reinforcement";
   }
 }

@@ -2,10 +2,8 @@ import { activeCombatantCanAct, getActiveCombatant, sortedCombatants } from "../
 import {
   CONDITION_OPTIONS,
   getConditionLabel,
-  getAttackText,
   getCombatantSpeedFeet,
   getDamageText,
-  getMonsterStatBlockSummary,
   getWeaponText,
 } from "../models.js";
 import { escapeHtml } from "../utils.js";
@@ -73,12 +71,6 @@ export const weaponOptionMarkup = (weapon, index, { disabled = false, rangeFeet 
 const getAttackOptionLabel = (attack, disabled, rangeFeet) =>
   `${attack.name} (${rangeFeet} ft${disabled ? ", out of range" : ""})`;
 
-const getStatusLabel = (combatant, activeId, state) => {
-  if (combatant.isDefeated) return "Defeated";
-  if (combatant.id === activeId && state.hasStarted && !state.isFinished) return "Active";
-  return "Ready";
-};
-
 const conditionMenuMarkup = (combatant, state) => {
   if (!state.hasStarted || state.isFinished || combatant.isDefeated) return "";
 
@@ -136,13 +128,7 @@ const setupActionMarkup = (combatant, state) =>
         <button type="button" data-action="remove" data-id="${combatant.id}">Remove</button>
       </div>`;
 
-const monsterSummaryMarkup = (combatant) =>
-  combatant.type === "monster"
-    ? `<span class="table-detail">${escapeHtml(getMonsterStatBlockSummary(combatant))}</span>`
-    : "";
-
 export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetId, state }) => {
-  const status = getStatusLabel(combatant, activeId, state);
   const isActive = combatant.id === activeId && state.hasStarted && !state.isFinished;
   const isTargetable = state.hasStarted && !state.isFinished && !combatant.isDefeated && !isActive;
   const isSelectedTarget = isTargetable && combatant.id === selectedTargetId;
@@ -157,13 +143,8 @@ export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetI
     <td>${combatant.initiative}</td>
     <td>${getCombatantSpeedFeet(combatant)} ft</td>
     <td>${combatant.attacksPerTurn}</td>
-    <td>
-      <span>${escapeHtml(getAttackText(combatant))}</span>
-      ${monsterSummaryMarkup(combatant)}
-    </td>
     <td>${combatant.damageDone}</td>
     <td>${conditionsMarkup(combatant, state)}</td>
-    <td><span class="status-pill status-${status.toLowerCase()}">${status}</span></td>
     <td class="setup-column">${setupActionMarkup(combatant, state)}</td>
   </tr>`;
 };

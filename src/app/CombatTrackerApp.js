@@ -1,4 +1,4 @@
-import { activeCombatantCanAct } from "../combat.js";
+import { activeCombatantCanAct, getActiveCombatant, sortedCombatants } from "../combat.js";
 import { BattleMapController } from "../controllers/BattleMapController.js";
 import { CombatantFormController } from "../controllers/CombatantFormController.js";
 import { EncounterDifficultyController } from "../controllers/EncounterDifficultyController.js";
@@ -157,9 +157,15 @@ export class CombatTrackerApp {
   }
 
   openAddCreatureModal() {
-    this.formController.reset();
+    if (this.state.isFinished) return;
+
+    if (this.state.hasStarted) {
+      this.formController.prepareReinforcementCreate();
+    } else {
+      this.formController.reset();
+    }
     this.formController.renderState(this.state);
-    this.formController.open("add");
+    this.formController.open(this.state.hasStarted ? "reinforcement" : "add");
   }
 
   openLibraryCreatureModal(type) {
@@ -215,7 +221,18 @@ export class CombatTrackerApp {
       return;
     }
 
-    this.rosterController.upsertFromForm(this.state, formCombatant, this.elements.combatantId.value);
+    if (this.state.hasStarted && (this.state.isFinished || formCombatant.type !== "monster")) return;
+
+    const activeBeforeAdd = this.state.hasStarted ? getActiveCombatant(this.state) : null;
+    const combatant = this.rosterController.upsertFromForm(
+      this.state,
+      formCombatant,
+      this.elements.combatantId.value,
+    );
+    this.preserveActiveTurn(activeBeforeAdd);
+    if (this.state.hasStarted && combatant.type === "monster") {
+      this.setRollResult(`${combatant.name} joins the encounter with initiative ${combatant.initiative}.`);
+    }
     this.closeCreatureFormAndRender();
   }
 
@@ -355,6 +372,9 @@ export class CombatTrackerApp {
   }
 
   addCombatantFromQuickAccess(entry) {
+    if (this.state.hasStarted && (this.state.isFinished || entry.type !== "monster")) return;
+
+    const activeBeforeAdd = this.state.hasStarted && !this.state.isFinished ? getActiveCombatant(this.state) : null;
     const initiative =
       entry.type === "monster"
         ? this.combatantFactory.rollMonsterInitiative(entry)
@@ -362,9 +382,22 @@ export class CombatTrackerApp {
 
     if (initiative === null) return;
 
-    this.rosterController.addFromQuickAccess(this.state, entry, initiative);
+    const combatant = this.rosterController.addFromQuickAccess(this.state, entry, initiative);
+    this.preserveActiveTurn(activeBeforeAdd);
     this.targetController.clear();
+    if (this.state.hasStarted && combatant.type === "monster") {
+      this.setRollResult(`${combatant.name} joins the encounter with initiative ${combatant.initiative}.`);
+    }
     this.render();
+  }
+
+  preserveActiveTurn(activeBeforeAdd) {
+    if (!activeBeforeAdd) return;
+
+    const currentTurnIndex = sortedCombatants(this.state).findIndex((combatant) => combatant.id === activeBeforeAdd.id);
+    if (currentTurnIndex >= 0) {
+      this.state.currentTurnIndex = currentTurnIndex;
+    }
   }
 
   startEncounter() {
@@ -604,9 +637,19 @@ export class CombatTrackerApp {
 
   getQuickAccessButton(event) {
     const button = event.target.closest("button");
-    if (!button || this.state.hasStarted) return;
+    if (!button) return null;
+    if (!this.state.hasStarted) return button;
+    if (this.canUseQuickAccessDuringEncounter(button)) return button;
 
-    return button;
+    return null;
+  }
+
+  canUseQuickAccessDuringEncounter(button) {
+    return (
+      !this.state.isFinished &&
+      button.dataset.action === "add-quick" &&
+      button.dataset.type === "monster"
+    );
   }
 
   removeCombatant(id) {

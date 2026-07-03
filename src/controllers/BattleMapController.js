@@ -1,4 +1,4 @@
-import { getActiveCombatant } from "../combat.js";
+import { getActiveCombatant, sortedCombatants } from "../combat.js";
 import {
   createBattleMapPosition,
   getCombatantMovementTiles,
@@ -74,6 +74,7 @@ export class BattleMapController {
     this.elements.battleMapBoard.style.height = `${layout.height}px`;
     this.elements.battleMapBoard.innerHTML = `${this.renderCells(map)}${this.renderTokens(state)}`;
     this.renderStatus(state);
+    this.renderInitiativeList(state);
   }
 
   renderStatus(state) {
@@ -127,6 +128,35 @@ export class BattleMapController {
     return state.combatants
       .map((combatant) => this.renderToken(state, combatant, active))
       .join("");
+  }
+
+  renderInitiativeList(state) {
+    if (!this.elements.battleMapInitiativeList) return;
+
+    const active = getActiveCombatant(state);
+    const combatants = sortedCombatants(state);
+
+    this.elements.battleMapInitiativeList.innerHTML =
+      combatants.length > 0
+        ? combatants.map((combatant) => this.renderInitiativeItem(state, combatant, active)).join("")
+        : `<p class="battle-map-initiative-empty">No combatants</p>`;
+  }
+
+  renderInitiativeItem(state, combatant, active) {
+    const className = [
+      "battle-map-initiative-item",
+      combatant.type === "monster" ? "is-monster" : "is-character",
+      active?.id === combatant.id && state.hasStarted && !state.isFinished ? "is-active" : "",
+      combatant.isDefeated ? "is-defeated" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return `<div class="${className}">
+      <span class="battle-map-initiative-name">${escapeHtml(combatant.name)}</span>
+      <span class="battle-map-initiative-hp">${combatant.currentHp}/${combatant.maxHp}</span>
+      <strong>${combatant.initiative}</strong>
+    </div>`;
   }
 
   renderToken(state, combatant, active) {

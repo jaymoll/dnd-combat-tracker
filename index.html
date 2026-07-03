@@ -103,10 +103,8 @@
                         <th scope="col">Initiative</th>
                         <th scope="col">Speed</th>
                         <th scope="col">Attacks</th>
-                        <th scope="col">Attack</th>
                         <th scope="col">Damage Done</th>
                         <th scope="col">Conditions</th>
-                        <th scope="col">Status</th>
                         <th scope="col" class="setup-column">Actions</th>
                       </tr>
                     </thead>
@@ -191,8 +189,15 @@
 
           <div id="battleMapTurnPanelSlot"></div>
 
-          <div class="battle-map-viewport" aria-label="Encounter battle map">
-            <div class="battle-map-board square-grid" id="battleMapBoard"></div>
+          <div class="battle-map-layout">
+            <div class="battle-map-viewport" aria-label="Encounter battle map">
+              <div class="battle-map-board square-grid" id="battleMapBoard"></div>
+            </div>
+
+            <aside class="battle-map-initiative" aria-labelledby="battle-map-initiative-title">
+              <h3 id="battle-map-initiative-title">Initiative</h3>
+              <div id="battleMapInitiativeList" class="battle-map-initiative-list"></div>
+            </aside>
           </div>
         </section>
       </div>

@@ -7,6 +7,7 @@ export const elements = {
   battleMapResetButton: document.querySelector("#battleMapResetButton"),
   battleMapStatus: document.querySelector("#battleMapStatus"),
   battleMapBoard: document.querySelector("#battleMapBoard"),
+  battleMapInitiativeList: document.querySelector("#battleMapInitiativeList"),
   battleMapTurnPanelSlot: document.querySelector("#battleMapTurnPanelSlot"),
   encounterTurnPanelSlot: document.querySelector("#encounterTurnPanelSlot"),
   libraryCreateButtons: document.querySelectorAll("[data-library-create]"),
