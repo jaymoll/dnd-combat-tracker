@@ -1,4 +1,4 @@
-import { getAbilityModifier, normalizeConditions } from "../models.js";
+import { createBattleMapPosition, getAbilityModifier, normalizeConditions } from "../models.js";
 import { parseInteger, rollInclusive } from "../utils.js";
 
 export class CombatantFactory {
@@ -22,6 +22,7 @@ export class CombatantFactory {
       conditions: existing?.conditions ?? normalizeConditions(formCombatant.conditions),
       isDefeated: formCombatant.currentHp === 0,
       order: existing?.order ?? nextOrder,
+      battleMapPosition: existing?.battleMapPosition ?? createBattleMapPosition(formCombatant.type, nextOrder),
     };
   }
 
@@ -35,6 +36,7 @@ export class CombatantFactory {
       initiative: entry.type === "monster" ? initiative : parseInteger(initiative),
       armorClass: entry.armorClass,
       attacksPerTurn: entry.attacksPerTurn,
+      movementFeet: entry.movementFeet,
       statBlock: entry.statBlock,
       weapons: entry.weapons ?? [],
       spells: entry.spells ?? [],
@@ -42,6 +44,7 @@ export class CombatantFactory {
       conditions: [],
       isDefeated: entry.currentHp === 0,
       order: nextOrder,
+      battleMapPosition: createBattleMapPosition(entry.type, nextOrder),
     };
   }
 }

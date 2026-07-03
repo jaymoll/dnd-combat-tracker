@@ -31,6 +31,8 @@ const clampNumber = (value, min, max = Number.MAX_SAFE_INTEGER) => {
 const createId = (type, index) => `${type}-${index}`;
 
 const readText = (entry, key, fallback = "") => String(entry?.[key] ?? fallback).trim();
+const defaultMovementFeet = 30;
+const tileFeet = 5;
 
 const normalizeMonsterStatBlock = (entry = {}) => {
   const source = entry.statBlock && typeof entry.statBlock === "object" ? entry.statBlock : entry;
@@ -64,6 +66,15 @@ const normalizeMonsterStatBlock = (entry = {}) => {
     reactions: readText(source, "reactions"),
     legendaryActions: readText(source, "legendaryActions"),
   };
+};
+
+const getMovementFeet = (entry, statBlock = null) => {
+  if (entry?.movementFeet) return clampNumber(entry.movementFeet, tileFeet);
+
+  const speedText = String(statBlock?.speed ?? entry?.statBlock?.speed ?? entry?.speed ?? "");
+  const speedMatch = speedText.match(/(\d+)\s*ft\.?/i);
+
+  return speedMatch ? clampNumber(speedMatch[1], tileFeet) : defaultMovementFeet;
 };
 
 const normalizeSpell = (entry, index = 0) => {
@@ -129,6 +140,7 @@ const normalizeEntry = (entry, type, index) => {
     ? entry.weapons.map((weapon, weaponIndex) => normalizeWeapon(weapon, weaponIndex)).filter(Boolean)
     : [];
   const statBlock = type === "monster" ? normalizeMonsterStatBlock(entry) : null;
+  const movementFeet = getMovementFeet(entry, statBlock);
 
   if (!name) return null;
 
@@ -140,6 +152,7 @@ const normalizeEntry = (entry, type, index) => {
     currentHp,
     armorClass,
     attacksPerTurn,
+    movementFeet,
     spells,
     weapons,
     ...(statBlock ? { statBlock } : {}),
@@ -192,6 +205,7 @@ const writeLibraryType = async (type, entries) => {
           currentHp: entry.currentHp,
           armorClass: entry.armorClass,
           attacksPerTurn: entry.attacksPerTurn,
+          movementFeet: getMovementFeet(entry),
           ...(type === "monster" ? { statBlock: normalizeMonsterStatBlock(entry) } : {}),
           spells: (entry.spells ?? []).map((spell) => ({
             name: spell.name,

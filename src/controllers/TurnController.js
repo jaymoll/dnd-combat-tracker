@@ -20,6 +20,7 @@ export class TurnController {
       const nextIndex = getNextLivingIndex(state, state.currentTurnIndex);
       if (nextIndex !== state.currentTurnIndex) {
         state.attacksUsedThisTurn = 0;
+        state.movementUsedThisTurn = 0;
       }
       state.currentTurnIndex = nextIndex;
     }
@@ -31,6 +32,7 @@ export class TurnController {
     state.hasStarted = true;
     state.currentTurnIndex = getNextLivingIndex(state, 0);
     state.attacksUsedThisTurn = 0;
+    state.movementUsedThisTurn = 0;
     return true;
   }
 
@@ -39,6 +41,7 @@ export class TurnController {
 
     state.currentTurnIndex = getNextLivingIndex(state, state.currentTurnIndex + 1);
     state.attacksUsedThisTurn = 0;
+    state.movementUsedThisTurn = 0;
     return true;
   }
 
@@ -130,6 +133,7 @@ export class TurnController {
     if (!state.isFinished && state.attacksUsedThisTurn >= getAttackLimit(active)) {
       state.currentTurnIndex = getNextLivingIndex(state, state.currentTurnIndex + 1);
       state.attacksUsedThisTurn = 0;
+      state.movementUsedThisTurn = 0;
       return {
         message: `${message} Turn ended automatically.`,
         shouldClearTarget: true,
@@ -148,6 +152,7 @@ export class TurnController {
 
     state.currentTurnIndex = getNextLivingIndex(state, state.currentTurnIndex + 1);
     state.attacksUsedThisTurn = 0;
+    state.movementUsedThisTurn = 0;
 
     return {
       message: `${message} Turn ended.`,

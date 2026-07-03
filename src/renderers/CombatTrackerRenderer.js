@@ -12,12 +12,20 @@ import {
 } from "./templates.js";
 
 export class CombatTrackerRenderer {
-  constructor(elements, formController, targetController, spellFormController = null, weaponFormController = null) {
+  constructor(
+    elements,
+    formController,
+    targetController,
+    spellFormController = null,
+    weaponFormController = null,
+    battleMapController = null,
+  ) {
     this.elements = elements;
     this.formController = formController;
     this.targetController = targetController;
     this.spellFormController = spellFormController;
     this.weaponFormController = weaponFormController;
+    this.battleMapController = battleMapController;
   }
 
   render(state, quickAccess) {
@@ -30,6 +38,7 @@ export class CombatTrackerRenderer {
     this.renderQuickAccess(quickAccess, state);
     this.renderTurnPanel(state);
     this.renderRows(state);
+    this.battleMapController?.render(state);
   }
 
   renderQuickAccess(quickAccess, state) {
@@ -91,15 +100,21 @@ export class CombatTrackerRenderer {
   }
 
   renderTurnPanel(state) {
-    this.elements.turnPanel.hidden = !state.hasStarted || state.isFinished;
+    const panels = this.getTurnPanels();
+
+    panels.forEach((panel) => {
+      panel.turnPanel.hidden = !state.hasStarted || state.isFinished;
+    });
 
     if (!canRenderTurnPanel(state)) {
-      this.elements.activeName.textContent = "";
-      this.elements.selectedTargetText.textContent = "";
-      this.elements.weapon.innerHTML = "";
-      this.elements.spell.innerHTML = "";
+      panels.forEach((panel) => {
+        panel.activeName.textContent = "";
+        panel.selectedTargetText.textContent = "";
+        panel.weapon.innerHTML = "";
+        panel.spell.innerHTML = "";
+        panel.rollResult.textContent = "";
+      });
       this.targetController.clear();
-      this.elements.rollResult.textContent = "";
       return;
     }
 
@@ -112,21 +127,54 @@ export class CombatTrackerRenderer {
       selectedTarget = null;
     }
 
-    this.elements.activeName.textContent = active.name;
-    this.elements.selectedTargetText.textContent = selectedTarget
-      ? `Target: ${selectedTarget.name}`
-      : "Target: select from list";
-    this.elements.weapon.innerHTML = (active.weapons ?? []).map(weaponOptionMarkup).join("");
-    this.elements.spell.innerHTML = (active.spells ?? []).map(spellOptionMarkup).join("");
-
     const hasSelectedTarget = Boolean(selectedTarget);
+    const weaponOptions = (active.weapons ?? []).map(weaponOptionMarkup).join("");
+    const spellOptions = (active.spells ?? []).map(spellOptionMarkup).join("");
 
-    this.elements.damageForm.querySelector("button[type='submit']").disabled = !hasSelectedTarget;
-    this.elements.rollAttackButton.disabled = !hasSelectedTarget || (active.weapons ?? []).length === 0;
-    this.elements.weapon.disabled = this.elements.rollAttackButton.disabled;
-    this.elements.castSpellButton.disabled = !hasSelectedTarget || (active.spells ?? []).length === 0;
-    this.elements.spell.disabled = this.elements.castSpellButton.disabled;
-    this.elements.nextTurnButton.disabled = targets.length === 0 && livingCombatants.length < 2;
+    panels.forEach((panel) => {
+      panel.activeName.textContent = active.name;
+      panel.selectedTargetText.textContent = selectedTarget
+        ? `Target: ${selectedTarget.name}`
+        : "Target: select from list";
+      panel.weapon.innerHTML = weaponOptions;
+      panel.spell.innerHTML = spellOptions;
+
+      panel.damageForm.querySelector("button[type='submit']").disabled = !hasSelectedTarget;
+      panel.rollAttackButton.disabled = !hasSelectedTarget || (active.weapons ?? []).length === 0;
+      panel.weapon.disabled = panel.rollAttackButton.disabled;
+      panel.castSpellButton.disabled = !hasSelectedTarget || (active.spells ?? []).length === 0;
+      panel.spell.disabled = panel.castSpellButton.disabled;
+      panel.nextTurnButton.disabled = targets.length === 0 && livingCombatants.length < 2;
+    });
+  }
+
+  getTurnPanels() {
+    return [
+      {
+        turnPanel: this.elements.turnPanel,
+        activeName: this.elements.activeName,
+        selectedTargetText: this.elements.selectedTargetText,
+        damageForm: this.elements.damageForm,
+        weapon: this.elements.weapon,
+        spell: this.elements.spell,
+        rollAttackButton: this.elements.rollAttackButton,
+        castSpellButton: this.elements.castSpellButton,
+        nextTurnButton: this.elements.nextTurnButton,
+        rollResult: this.elements.rollResult,
+      },
+      {
+        turnPanel: this.elements.battleMapTurnPanel,
+        activeName: this.elements.battleMapActiveName,
+        selectedTargetText: this.elements.battleMapSelectedTargetText,
+        damageForm: this.elements.battleMapDamageForm,
+        weapon: this.elements.battleMapWeapon,
+        spell: this.elements.battleMapSpell,
+        rollAttackButton: this.elements.battleMapRollAttackButton,
+        castSpellButton: this.elements.battleMapCastSpellButton,
+        nextTurnButton: this.elements.battleMapNextTurnButton,
+        rollResult: this.elements.battleMapRollResult,
+      },
+    ];
   }
 
   renderRows(state) {

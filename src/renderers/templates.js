@@ -3,6 +3,7 @@ import {
   CONDITION_OPTIONS,
   getConditionLabel,
   getAttackText,
+  getCombatantSpeedFeet,
   getDamageText,
   getMonsterStatBlockSummary,
   getWeaponText,
@@ -30,7 +31,7 @@ const quickAccessCr = (item) => {
 export const quickAccessItemMarkup = (item, type, isDisabled, actions = ["add", "edit", "remove"]) => `<article class="quick-item">
   <div>
     <strong>${escapeHtml(item.name)}</strong>
-    <span>HP ${item.currentHp}/${item.maxHp} / AC ${item.armorClass} / CR ${escapeHtml(quickAccessCr(item))}</span>
+    <span>HP ${item.currentHp}/${item.maxHp} / AC ${item.armorClass} / Speed ${getCombatantSpeedFeet(item)} ft / CR ${escapeHtml(quickAccessCr(item))}</span>
   </div>
   <div class="quick-actions">
     ${actions.includes("add") ? `<button type="button" data-action="add-quick" data-type="${type}" data-id="${item.id}" ${isDisabled ? "disabled" : ""}>Add</button>` : ""}
@@ -133,6 +134,7 @@ export const combatantRowMarkup = (combatant, index, { activeId, selectedTargetI
     <td>${combatant.armorClass}</td>
     <td>${combatant.currentHp} / ${combatant.maxHp}</td>
     <td>${combatant.initiative}</td>
+    <td>${getCombatantSpeedFeet(combatant)} ft</td>
     <td>${combatant.attacksPerTurn}</td>
     <td>
       <span>${escapeHtml(getAttackText(combatant))}</span>

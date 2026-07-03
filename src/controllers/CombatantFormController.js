@@ -1,5 +1,5 @@
 import { hasRequiredSides } from "../combat.js";
-import { normalizeMonsterStatBlock } from "../models.js";
+import { DEFAULT_MOVEMENT_FEET, getCombatantSpeedFeet, normalizeMonsterStatBlock } from "../models.js";
 import { clampNumber, escapeHtml, parseInteger } from "../utils.js";
 
 const monsterStatBlockInputs = (elements) => [
@@ -89,6 +89,7 @@ export class CombatantFormController {
     const currentHp = clampNumber(this.elements.currentHp.value, 0, maxHp);
     const armorClass = clampNumber(this.elements.armorClass.value, 1);
     const attacksPerTurn = clampNumber(this.elements.attacksPerTurn.value, 1);
+    const movementFeet = clampNumber(this.elements.movementFeet.value, 5);
     const isMonster = this.elements.type.value === "monster";
     const name = this.elements.name.value.trim();
     const weapons = Array.from(
@@ -127,6 +128,7 @@ export class CombatantFormController {
       initiative: parseInteger(this.elements.initiative.value),
       armorClass,
       attacksPerTurn,
+      movementFeet,
       ...(isMonster ? { statBlock: this.readMonsterStatBlock() } : {}),
       weapons,
       spells,
@@ -175,6 +177,7 @@ export class CombatantFormController {
     this.elements.initiative.value = "";
     this.elements.attacksPerTurn.value = "1";
     this.elements.armorClass.value = "";
+    this.elements.movementFeet.value = DEFAULT_MOVEMENT_FEET;
     this.clearMonsterStatBlockFields();
     this.elements.saveQuickAccessButton.hidden = false;
     this.renderWeaponAssignments();
@@ -214,6 +217,7 @@ export class CombatantFormController {
     this.elements.initiative.value = creature.initiative;
     this.elements.attacksPerTurn.value = creature.attacksPerTurn;
     this.elements.armorClass.value = creature.armorClass;
+    this.elements.movementFeet.value = getCombatantSpeedFeet(creature);
     this.fillMonsterStatBlockFields(creature);
     this.renderWeaponAssignments(creature.weapons ?? []);
     this.renderSpellAssignments(creature.spells ?? []);
@@ -337,6 +341,7 @@ export class CombatantFormController {
       (this.elements.type.value === "monster" && !this.elements.combatantId.value);
     this.elements.attacksPerTurn.disabled = setupDisabled;
     this.elements.armorClass.disabled = setupDisabled;
+    this.elements.movementFeet.disabled = setupDisabled;
     monsterStatBlockInputs(this.elements).forEach((input) => {
       input.disabled = setupDisabled || this.elements.type.value !== "monster";
     });

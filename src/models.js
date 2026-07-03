@@ -5,9 +5,15 @@ export const createInitialState = () => ({
   hasStarted: false,
   currentTurnIndex: 0,
   attacksUsedThisTurn: 0,
+  movementUsedThisTurn: 0,
   isFinished: false,
   winner: null,
   nextOrder: 0,
+  battleMap: {
+    gridType: "square",
+    width: 18,
+    height: 12,
+  },
 });
 
 export const createInitialQuickAccess = () => ({
@@ -38,6 +44,10 @@ export const CONDITION_OPTIONS = [
 ];
 
 const conditionValues = new Set(CONDITION_OPTIONS.map((condition) => condition.value));
+
+export const DEFAULT_MOVEMENT_FEET = 30;
+
+export const TILE_FEET = 5;
 
 export const normalizeConditionValue = (condition) => {
   const value = String(condition?.value ?? condition ?? "").trim().toLowerCase();
@@ -159,6 +169,15 @@ export const normalizeWeapon = (entry, idFactory, index = 0) => {
   };
 };
 
+export const getCombatantSpeedFeet = (combatant) => {
+  if (combatant?.movementFeet) return clampNumber(combatant.movementFeet, TILE_FEET);
+
+  const speedText = String(combatant?.statBlock?.speed ?? combatant?.speed ?? "");
+  const speedMatch = speedText.match(/(\d+)\s*ft\.?/i);
+
+  return speedMatch ? clampNumber(speedMatch[1], TILE_FEET) : DEFAULT_MOVEMENT_FEET;
+};
+
 export const normalizeCreature = (entry, type, idFactory) => {
   if (!entry || typeof entry !== "object") return null;
 
@@ -174,6 +193,7 @@ export const normalizeCreature = (entry, type, idFactory) => {
     ? entry.weapons.map((weapon, index) => normalizeWeapon(weapon, idFactory, index)).filter(Boolean)
     : [];
   const statBlock = type === "monster" ? normalizeMonsterStatBlock(entry) : null;
+  const movementFeet = getCombatantSpeedFeet({ ...entry, ...(statBlock ? { statBlock } : {}) });
 
   if (!name) return null;
 
@@ -185,6 +205,7 @@ export const normalizeCreature = (entry, type, idFactory) => {
     currentHp,
     armorClass,
     attacksPerTurn,
+    movementFeet,
     conditions: normalizeConditions(entry.conditions),
     spells,
     weapons,
@@ -216,6 +237,7 @@ export const createQuickAccessEntry = (creature) => ({
   currentHp: creature.currentHp,
   armorClass: creature.armorClass,
   attacksPerTurn: creature.attacksPerTurn,
+  movementFeet: getCombatantSpeedFeet(creature),
   ...(creature.type === "monster" ? { statBlock: normalizeMonsterStatBlock(creature) } : {}),
   spells: (creature.spells ?? []).map(createSpellEntry),
   weapons: (creature.weapons ?? []).map(createWeaponEntry),
@@ -249,3 +271,13 @@ export const getAttackText = (combatant) => {
 
   return details.length > 0 ? details.join("; ") : "-";
 };
+
+export const createBattleMapPosition = (type, order = 0) => {
+  const lane = order % 10;
+  const row = 1 + lane;
+
+  return type === "monster" ? { x: 15, y: row } : { x: 2, y: row };
+};
+
+export const getCombatantMovementTiles = (combatant) =>
+  Math.floor(getCombatantSpeedFeet(combatant) / TILE_FEET);

@@ -1,4 +1,5 @@
 import { activeCombatantCanAct } from "../combat.js";
+import { BattleMapController } from "../controllers/BattleMapController.js";
 import { CombatantFormController } from "../controllers/CombatantFormController.js";
 import { QuickAccessController } from "../controllers/QuickAccessController.js";
 import { RosterController } from "../controllers/RosterController.js";
@@ -23,12 +24,14 @@ export class CombatTrackerApp {
     this.turnController = new TurnController();
     this.combatantFactory = new CombatantFactory();
     this.rosterController = new RosterController(this.combatantFactory);
+    this.battleMapController = new BattleMapController(elements, this.targetController, () => this.render());
     this.renderer = new CombatTrackerRenderer(
       elements,
       this.formController,
       this.targetController,
       this.spellFormController,
       this.weaponFormController,
+      this.battleMapController,
     );
   }
 
@@ -45,6 +48,13 @@ export class CombatTrackerApp {
     this.elements.screenButtons.forEach((button) => {
       button.addEventListener("click", () => this.showScreen(button.dataset.screenButton));
     });
+    this.elements.battleMapGridType.addEventListener("change", () => this.changeBattleMapGrid());
+    this.elements.battleMapWidth.addEventListener("change", () => this.resizeBattleMap());
+    this.elements.battleMapHeight.addEventListener("change", () => this.resizeBattleMap());
+    this.elements.battleMapResetButton.addEventListener("click", () => this.resetBattleMapPositions());
+    this.elements.battleMapBoard.addEventListener("pointerdown", (event) =>
+      this.battleMapController.startDrag(event, this.state),
+    );
     this.elements.libraryCreateButtons.forEach((button) => {
       button.addEventListener("click", () => this.openLibraryCreatureModal(button.dataset.libraryCreate));
     });
@@ -58,6 +68,16 @@ export class CombatTrackerApp {
     this.elements.rollAttackButton.addEventListener("click", () => this.rollAttack());
     this.elements.castSpellButton.addEventListener("click", () => this.castSpell());
     this.elements.nextTurnButton.addEventListener("click", () => this.nextTurn());
+    this.elements.battleMapDamageForm.addEventListener("submit", (event) =>
+      this.applyDamage(event, this.elements.battleMapDamage),
+    );
+    this.elements.battleMapRollAttackButton.addEventListener("click", () =>
+      this.rollAttack(this.elements.battleMapWeapon),
+    );
+    this.elements.battleMapCastSpellButton.addEventListener("click", () =>
+      this.castSpell(this.elements.battleMapSpell),
+    );
+    this.elements.battleMapNextTurnButton.addEventListener("click", () => this.nextTurn());
     this.elements.openSpellModalButton.addEventListener("click", () => this.openAddSpellModal());
     this.elements.closeSpellModalButton.addEventListener("click", () => this.cancelSpellForm());
     this.elements.cancelSpellButton.addEventListener("click", () => this.cancelSpellForm());
@@ -187,6 +207,28 @@ export class CombatTrackerApp {
     });
   }
 
+  changeBattleMapGrid() {
+    if (!this.battleMapController.setGridType(this.state, this.elements.battleMapGridType.value)) return;
+
+    this.render();
+  }
+
+  resizeBattleMap() {
+    const didResize = this.battleMapController.setGridSize(
+      this.state,
+      this.elements.battleMapWidth.value,
+      this.elements.battleMapHeight.value,
+    );
+    if (!didResize) return;
+
+    this.render();
+  }
+
+  resetBattleMapPositions() {
+    this.battleMapController.resetPositions(this.state);
+    this.render();
+  }
+
   async saveFormToQuickAccess() {
     if (this.state.hasStarted) return;
 
@@ -275,7 +317,7 @@ export class CombatTrackerApp {
     this.render();
   }
 
-  applyDamage(event) {
+  applyDamage(event, damageInput = this.elements.damage) {
     event.preventDefault();
     if (!activeCombatantCanAct(this.state)) return;
 
@@ -285,16 +327,17 @@ export class CombatTrackerApp {
     const result = this.turnController.applyDamage(
       this.state,
       targetId,
-      clampNumber(this.elements.damage.value, 1),
+      clampNumber(damageInput.value, 1),
     );
 
     if (!result) return;
 
     this.elements.damage.value = "";
+    this.elements.battleMapDamage.value = "";
     this.finishAttack(result);
   }
 
-  rollAttack() {
+  rollAttack(weaponInput = this.elements.weapon) {
     if (!activeCombatantCanAct(this.state)) return;
 
     const targetId = this.targetController.selectedId;
@@ -303,12 +346,12 @@ export class CombatTrackerApp {
     const result = this.turnController.rollAttack(
       this.state,
       targetId,
-      this.elements.weapon.value,
+      weaponInput.value,
     );
     if (result) this.finishAttack(result);
   }
 
-  castSpell() {
+  castSpell(spellInput = this.elements.spell) {
     if (!activeCombatantCanAct(this.state)) return;
 
     const targetId = this.targetController.selectedId;
@@ -317,7 +360,7 @@ export class CombatTrackerApp {
     const result = this.turnController.castSpell(
       this.state,
       targetId,
-      this.elements.spell.value,
+      spellInput.value,
     );
     if (result) this.finishAttack(result);
   }
@@ -327,8 +370,13 @@ export class CombatTrackerApp {
       this.targetController.clear();
     }
 
-    this.elements.rollResult.textContent = result.message;
+    this.setRollResult(result.message);
     this.render();
+  }
+
+  setRollResult(message) {
+    this.elements.rollResult.textContent = message;
+    this.elements.battleMapRollResult.textContent = message;
   }
 
   applyCondition(id, condition) {
@@ -337,7 +385,7 @@ export class CombatTrackerApp {
     const result = this.rosterController.applyCondition(this.state, id, condition);
     if (!result) return;
 
-    this.elements.rollResult.textContent = result.message;
+    this.setRollResult(result.message);
     this.render();
   }
 
@@ -347,7 +395,7 @@ export class CombatTrackerApp {
     const result = this.rosterController.removeCondition(this.state, id, condition);
     if (!result) return;
 
-    this.elements.rollResult.textContent = result.message;
+    this.setRollResult(result.message);
     this.render();
   }
 
