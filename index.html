@@ -183,6 +183,10 @@
                 <span>Height</span>
                 <input id="battleMapHeightInput" type="number" min="4" max="60" step="1" />
               </label>
+              <label class="inline-control map-zoom-control">
+                <span>Zoom</span>
+                <input id="battleMapZoomInput" type="range" min="50" max="150" step="10" value="100" />
+              </label>
               <button type="button" id="battleMapResetButton">Reset Positions</button>
             </div>
           </div>
@@ -191,7 +195,9 @@
 
           <div class="battle-map-layout">
             <div class="battle-map-viewport" aria-label="Encounter battle map">
-              <div class="battle-map-board square-grid" id="battleMapBoard"></div>
+              <div class="battle-map-stage" id="battleMapStage">
+                <div class="battle-map-board square-grid" id="battleMapBoard"></div>
+              </div>
             </div>
 
             <aside class="battle-map-initiative" aria-labelledby="battle-map-initiative-title">

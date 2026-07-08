@@ -13,6 +13,7 @@ export const createInitialState = () => ({
     gridType: "square",
     width: 18,
     height: 12,
+    zoom: 100,
   },
 });
 

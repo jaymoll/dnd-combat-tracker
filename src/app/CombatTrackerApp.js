@@ -80,6 +80,7 @@ export class CombatTrackerApp {
     this.elements.battleMapGridType.addEventListener("change", () => this.changeBattleMapGrid());
     this.elements.battleMapWidth.addEventListener("change", () => this.resizeBattleMap());
     this.elements.battleMapHeight.addEventListener("change", () => this.resizeBattleMap());
+    this.elements.battleMapZoom.addEventListener("input", () => this.zoomBattleMap());
     this.elements.battleMapResetButton.addEventListener("click", () => this.resetBattleMapPositions());
     this.elements.battleMapBoard.addEventListener("pointerdown", (event) =>
       this.battleMapController.startDrag(event, this.state),
@@ -305,6 +306,12 @@ export class CombatTrackerApp {
       this.elements.battleMapHeight.value,
     );
     if (!didResize) return;
+
+    this.render();
+  }
+
+  zoomBattleMap() {
+    if (!this.battleMapController.setZoom(this.state, this.elements.battleMapZoom.value)) return;
 
     this.render();
   }

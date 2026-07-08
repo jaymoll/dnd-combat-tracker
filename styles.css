@@ -957,6 +957,10 @@ textarea {
   width: 72px;
 }
 
+.map-zoom-control input {
+  width: 118px;
+}
+
 .battle-map-panel {
   min-height: calc(100vh - 170px);
   background: transparent;
@@ -996,6 +1000,12 @@ textarea {
     rgba(5, 7, 10, 0.52);
   scrollbar-color: rgba(66, 219, 194, 0.46) rgba(255, 255, 255, 0.06);
   scrollbar-width: thin;
+}
+
+.battle-map-stage {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .battle-map-initiative {
@@ -1086,9 +1096,8 @@ textarea {
 
 .battle-map-board {
   position: relative;
-  min-width: 100%;
-  min-height: 100%;
   margin: 0;
+  transform-origin: top left;
   touch-action: none;
 }
 
@@ -1593,6 +1602,11 @@ tr.defeated-row {
   }
 
   .map-size-control input {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .map-zoom-control input {
     flex: 1 1 auto;
     width: 100%;
   }

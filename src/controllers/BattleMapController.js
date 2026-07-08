@@ -10,6 +10,9 @@ import { clampNumber, escapeHtml } from "../utils.js";
 const DRAG_THRESHOLD_PX = 4;
 const MIN_GRID_SIZE = 4;
 const MAX_GRID_SIZE = 60;
+const MIN_ZOOM = 50;
+const MAX_ZOOM = 150;
+const DEFAULT_ZOOM = 100;
 
 const tokenInitials = (name) =>
   String(name)
@@ -51,6 +54,14 @@ export class BattleMapController {
     return true;
   }
 
+  setZoom(state, zoom) {
+    const nextZoom = clampNumber(zoom, MIN_ZOOM, MAX_ZOOM);
+    if ((state.battleMap.zoom ?? DEFAULT_ZOOM) === nextZoom) return false;
+
+    state.battleMap.zoom = nextZoom;
+    return true;
+  }
+
   resetPositions(state) {
     state.combatants.forEach((combatant) => {
       combatant.battleMapPosition = this.geometry.clampPosition(
@@ -66,15 +77,24 @@ export class BattleMapController {
 
     const map = state.battleMap;
     const layout = this.geometry.getLayout(map);
+    const zoom = this.getZoomScale(map);
     this.elements.battleMapGridType.value = map.gridType;
     this.elements.battleMapWidth.value = map.width;
     this.elements.battleMapHeight.value = map.height;
+    this.elements.battleMapZoom.value = map.zoom ?? DEFAULT_ZOOM;
+    this.elements.battleMapStage.style.width = `${layout.width * zoom}px`;
+    this.elements.battleMapStage.style.height = `${layout.height * zoom}px`;
     this.elements.battleMapBoard.className = `battle-map-board ${map.gridType}-grid`;
     this.elements.battleMapBoard.style.width = `${layout.width}px`;
     this.elements.battleMapBoard.style.height = `${layout.height}px`;
+    this.elements.battleMapBoard.style.transform = `scale(${zoom})`;
     this.elements.battleMapBoard.innerHTML = `${this.renderCells(map)}${this.renderTokens(state)}`;
     this.renderStatus(state);
     this.renderInitiativeList(state);
+  }
+
+  getZoomScale(map) {
+    return clampNumber(map.zoom ?? DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM) / 100;
   }
 
   renderStatus(state) {
@@ -381,10 +401,11 @@ export class BattleMapController {
 
   getPointerPoint(event) {
     const rect = this.elements.battleMapBoard.getBoundingClientRect();
+    const zoom = this.state ? this.getZoomScale(this.state.battleMap) : 1;
 
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: (event.clientX - rect.left) / zoom,
+      y: (event.clientY - rect.top) / zoom,
     };
   }
 
