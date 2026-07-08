@@ -8,7 +8,12 @@ import {
   getNextLivingIndex,
   hasRequiredSides,
 } from "../combat.js";
-import { DEFAULT_SPELL_RANGE_FEET, DEFAULT_WEAPON_RANGE_FEET, getAttackBonus } from "../models.js";
+import {
+  DEFAULT_SPELL_RANGE_FEET,
+  DEFAULT_WEAPON_RANGE_FEET,
+  getAttackAbilityModifier,
+  getAttackBonus,
+} from "../models.js";
 import { formatModifier, rollInclusive } from "../utils.js";
 import { BattleMapGeometry } from "./BattleMapGeometry.js";
 
@@ -92,8 +97,14 @@ export class TurnController {
       );
     }
 
-    const damage = this.rollDamage(context.attacker, context.target, weapon, attackBonus + weapon.damageBonus);
-    const bonusText = this.formatWeaponDamageBonus(attackBonus, weapon.damageBonus);
+    const damageAbilityModifier = getAttackAbilityModifier(context.attacker, weapon.ability);
+    const damage = this.rollDamage(
+      context.attacker,
+      context.target,
+      weapon,
+      damageAbilityModifier + weapon.damageBonus,
+    );
+    const bonusText = this.formatWeaponDamageBonus(damageAbilityModifier, weapon.damageBonus);
 
     return this.finishAttack(
       state,

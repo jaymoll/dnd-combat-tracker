@@ -69,6 +69,12 @@ const readAbilityFields = (source) =>
     monsterAbilityFields.map(([field, alias]) => [field, clampNumber(source[field] ?? source[alias] ?? 10, 1, 30)]),
   );
 
+const readProficiencyBonus = (source) =>
+  clampNumber(
+    source.proficiencyBonus ?? source.proficiency ?? source.profBonus ?? source.prof ?? source.pb ?? 0,
+    0,
+  );
+
 const readSpellcastingAbility = (source) => {
   const spellcastingAbility = readText(source, "spellcastingAbility", "intelligence");
   return ["intelligence", "wisdom", "charisma"].includes(spellcastingAbility)
@@ -136,14 +142,20 @@ export const hasConditionImmunity = (combatant, condition) => {
 
 export const getAbilityModifier = (score) => Math.floor((clampNumber(score, 1, 30) - 10) / 2);
 
+export const getMonsterProficiencyBonus = (combatant) =>
+  clampNumber(combatant?.statBlock?.proficiencyBonus ?? 0, 0);
+
 const getAttackAbilityScore = (combatant, ability) => {
   const statBlock = combatant?.statBlock ?? {};
   if (ability === "agility") return statBlock.dexterity ?? 10;
   return statBlock[ability] ?? 10;
 };
 
-export const getAttackBonus = (combatant, ability) =>
+export const getAttackAbilityModifier = (combatant, ability) =>
   getAbilityModifier(getAttackAbilityScore(combatant, ability));
+
+export const getAttackBonus = (combatant, ability) =>
+  getAttackAbilityModifier(combatant, ability) + getMonsterProficiencyBonus(combatant);
 
 export const normalizeMonsterStatBlock = (entry = {}) => {
   const source = entry.statBlock && typeof entry.statBlock === "object" ? entry.statBlock : entry;
@@ -152,6 +164,7 @@ export const normalizeMonsterStatBlock = (entry = {}) => {
     ...readTextFields(source, monsterIdentityFields),
     ...readAbilityFields(source),
     ...readTextFields(source, monsterDefenseFields),
+    proficiencyBonus: readProficiencyBonus(source),
     spellcastingAbility: readSpellcastingAbility(source),
     ...readTextFields(source, monsterActionFields),
   };

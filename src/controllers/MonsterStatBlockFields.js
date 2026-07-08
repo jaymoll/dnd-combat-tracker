@@ -5,6 +5,7 @@ const monsterStatBlockFields = [
   ["creatureType", "monsterCreatureType"],
   ["alignment", "monsterAlignment"],
   ["speed", "monsterSpeed"],
+  ["proficiencyBonus", "monsterProficiencyBonus"],
   ["strength", "monsterStrength"],
   ["dexterity", "monsterDexterity"],
   ["constitution", "monsterConstitution"],

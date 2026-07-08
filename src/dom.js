@@ -32,6 +32,7 @@ export const elements = {
   monsterCreatureType: document.querySelector("#monsterCreatureTypeInput"),
   monsterAlignment: document.querySelector("#monsterAlignmentInput"),
   monsterSpeed: document.querySelector("#monsterSpeedInput"),
+  monsterProficiencyBonus: document.querySelector("#monsterProficiencyBonusInput"),
   monsterStrength: document.querySelector("#monsterStrengthInput"),
   monsterDexterity: document.querySelector("#monsterDexterityInput"),
   monsterConstitution: document.querySelector("#monsterConstitutionInput"),
