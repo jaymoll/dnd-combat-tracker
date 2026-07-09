@@ -3,6 +3,7 @@ import {
   createBattleMapPosition,
   getCombatantMovementTiles,
   getCombatantSpeedFeet,
+  isAreaSpell,
 } from "../models.js";
 import { BattleMapGeometry } from "./BattleMapGeometry.js";
 import { clampNumber, escapeHtml } from "../utils.js";
@@ -30,6 +31,7 @@ export class BattleMapController {
     this.geometry = new BattleMapGeometry();
     this.state = null;
     this.drag = null;
+    this.areaTargeting = null;
     this.statusOverride = "";
     this.pointerMoveHandler = (event) => this.handlePointerMove(event);
     this.pointerUpHandler = (event) => this.handlePointerUp(event);
@@ -84,11 +86,15 @@ export class BattleMapController {
     this.elements.battleMapZoom.value = map.zoom ?? DEFAULT_ZOOM;
     this.elements.battleMapStage.style.width = `${layout.width * zoom}px`;
     this.elements.battleMapStage.style.height = `${layout.height * zoom}px`;
-    this.elements.battleMapBoard.className = `battle-map-board ${map.gridType}-grid`;
+    this.elements.battleMapBoard.className = [
+      "battle-map-board",
+      `${map.gridType}-grid`,
+      this.areaTargeting ? "is-area-targeting" : "",
+    ].filter(Boolean).join(" ");
     this.elements.battleMapBoard.style.width = `${layout.width}px`;
     this.elements.battleMapBoard.style.height = `${layout.height}px`;
     this.elements.battleMapBoard.style.transform = `scale(${zoom})`;
-    this.elements.battleMapBoard.innerHTML = `${this.renderCells(map)}${this.renderTokens(state)}`;
+    this.elements.battleMapBoard.innerHTML = `${this.renderCells(map)}${this.renderAreaPreview(state)}${this.renderTokens(state)}`;
     this.renderStatus(state);
     this.renderInitiativeList(state);
   }
@@ -101,6 +107,12 @@ export class BattleMapController {
     if (this.statusOverride) {
       this.elements.battleMapStatus.textContent = this.statusOverride;
       this.statusOverride = "";
+      return;
+    }
+
+    if (this.areaTargeting) {
+      const { spell } = this.areaTargeting;
+      this.elements.battleMapStatus.textContent = `Select ${spell.name} area - ${spell.areaRadiusFeet} ft radius`;
       return;
     }
 
@@ -140,6 +152,34 @@ export class BattleMapController {
     }
 
     return cells.join("");
+  }
+
+  renderAreaPreview(state) {
+    if (!this.areaTargeting) return "";
+
+    const { spell } = this.areaTargeting;
+    const map = state.battleMap;
+    const targetCell = this.areaTargeting.previewCell ?? this.getDefaultAreaTargetCell(state);
+    const targetPoint = this.geometry.getPointForCell(map, targetCell);
+    const radiusPixels = this.geometry.getAreaRadiusPixels(map, spell.areaRadiusFeet);
+    const cells = [];
+
+    for (let y = 0; y < map.height; y += 1) {
+      for (let x = 0; x < map.width; x += 1) {
+        if (!this.geometry.isCellInArea(map, { x, y }, targetCell, spell.areaRadiusFeet)) continue;
+
+        const position = this.geometry.getCellPosition(map, { x, y });
+        cells.push(
+          `<div class="battle-map-area-cell" style="left:${position.left}px;top:${position.top}px;" aria-hidden="true"></div>`,
+        );
+      }
+    }
+
+    return `<div class="battle-map-area-layer" aria-hidden="true">
+      <div class="battle-map-area-shape" style="left:${targetPoint.x}px;top:${targetPoint.y}px;width:${radiusPixels * 2}px;height:${radiusPixels * 2}px;"></div>
+      <div class="battle-map-area-center" style="left:${targetPoint.x}px;top:${targetPoint.y}px;"></div>
+      ${cells.join("")}
+    </div>`;
   }
 
   renderTokens(state) {
@@ -215,6 +255,11 @@ export class BattleMapController {
   startDrag(event, state) {
     if (event.button !== 0) return;
 
+    if (this.areaTargeting) {
+      this.confirmAreaTarget(event, state);
+      return;
+    }
+
     const token = event.target.closest("[data-token-id]");
     if (!token) return;
 
@@ -243,6 +288,48 @@ export class BattleMapController {
     token.classList.add("is-dragging-token");
     window.addEventListener("pointermove", this.pointerMoveHandler);
     window.addEventListener("pointerup", this.pointerUpHandler, { once: true });
+  }
+
+  startAreaTargeting(state, spellIndex, spell, onTarget) {
+    if (!isAreaSpell(spell)) return false;
+
+    this.state = state;
+    this.areaTargeting = {
+      spellIndex,
+      spell,
+      onTarget,
+      previewCell: this.getDefaultAreaTargetCell(state),
+    };
+    return true;
+  }
+
+  previewAreaTarget(event, state) {
+    if (!this.areaTargeting) return;
+
+    this.state = state;
+    this.areaTargeting.previewCell = this.getCellFromPointer(state.battleMap, event);
+    this.renderAreaPreviewIntoBoard(state);
+  }
+
+  confirmAreaTarget(event, state) {
+    const areaTargeting = this.areaTargeting;
+    if (!areaTargeting) return;
+
+    const targetCell = this.getCellFromPointer(state.battleMap, event);
+    this.areaTargeting = null;
+    areaTargeting.onTarget?.(targetCell);
+  }
+
+  renderAreaPreviewIntoBoard(state) {
+    const existingLayer = this.elements.battleMapBoard.querySelector(".battle-map-area-layer");
+    const markup = this.renderAreaPreview(state);
+
+    if (existingLayer) {
+      existingLayer.outerHTML = markup;
+      return;
+    }
+
+    this.elements.battleMapBoard.insertAdjacentHTML("beforeend", markup);
   }
 
   handlePointerMove(event) {
@@ -413,5 +500,12 @@ export class BattleMapController {
     const point = this.getPointerPoint(event);
 
     return this.geometry.getCellFromPoint(map, point);
+  }
+
+  getDefaultAreaTargetCell(state) {
+    const active = getActiveCombatant(state);
+    if (!active) return { x: 0, y: 0 };
+
+    return this.geometry.clampPosition(active.battleMapPosition, state.battleMap);
   }
 }

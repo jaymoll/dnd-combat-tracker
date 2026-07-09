@@ -178,9 +178,21 @@
       {
         "name": "Fire Bolt",
         "description": "A ranged spell attack that hurls a mote of fire.",
+        "targetType": "attack",
+        "areaRadiusFeet": 0,
         "rangeFeet": 120,
         "damageMin": 1,
         "damageMax": 10,
+        "damageBonus": 0
+      },
+      {
+        "name": "poop wave4",
+        "description": "",
+        "targetType": "area",
+        "areaRadiusFeet": 20,
+        "rangeFeet": 60,
+        "damageMin": 2,
+        "damageMax": 12,
         "damageBonus": 0
       }
     ],

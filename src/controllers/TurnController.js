@@ -13,6 +13,7 @@ import {
   DEFAULT_WEAPON_RANGE_FEET,
   getAttackAbilityModifier,
   getAttackBonus,
+  isAreaSpell,
 } from "../models.js";
 import { formatModifier, rollInclusive } from "../utils.js";
 import { BattleMapGeometry } from "./BattleMapGeometry.js";
@@ -118,7 +119,7 @@ export class TurnController {
 
     const context = this.getAttackContext(state, targetId);
     const spell = context?.attacker.spells?.[Number(spellIndex)];
-    if (!spell) return null;
+    if (!spell || isAreaSpell(spell)) return null;
 
     const rangeState = this.getAttackRangeState(
       state,
@@ -148,6 +149,40 @@ export class TurnController {
     return this.finishTurn(
       state,
       this.createHitMessage(spellLabel, roll, context.target, damage, formatModifier(spell.damageBonus)),
+    );
+  }
+
+  castAreaSpell(state, spellIndex, targetCell) {
+    if (!activeCombatantCanAct(state)) return null;
+
+    const active = getActiveCombatant(state);
+    const attacker = active ? state.combatants.find((combatant) => combatant.id === active.id) : null;
+    const spell = attacker?.spells?.[Number(spellIndex)];
+    if (!active || !attacker || !isAreaSpell(spell) || !targetCell) return null;
+
+    const rangeState = this.getAreaRangeState(state, attacker, targetCell, spell, DEFAULT_SPELL_RANGE_FEET);
+    if (!rangeState.canAttack) {
+      return {
+        message: `${attacker.name} cannot use ${spell.name}: target tile is ${rangeState.distanceFeet} ft away and range is ${rangeState.rangeFeet} ft.`,
+        shouldClearTarget: false,
+      };
+    }
+
+    const affectedTargets = this.getCombatantsInArea(state, targetCell, spell.areaRadiusFeet);
+    const damageRoll = rollInclusive(spell.damageMin, spell.damageMax);
+    const requestedDamage = Math.max(0, damageRoll + spell.damageBonus);
+    const damageResults = affectedTargets.map((target) => ({
+      target,
+      actualDamage: damageCombatant(attacker, target, requestedDamage),
+    }));
+    const bonusText = formatModifier(spell.damageBonus);
+    const targetText = damageResults.length > 0
+      ? damageResults.map(({ target, actualDamage }) => `${target.name} (${actualDamage})`).join(", ")
+      : "no targets";
+
+    return this.finishTurn(
+      state,
+      `${attacker.name} casts ${spell.name} in a ${spell.areaRadiusFeet} ft area, dealing ${damageRoll} ${bonusText} damage to ${targetText}.`,
     );
   }
 
@@ -195,6 +230,47 @@ export class TurnController {
     const attackerPosition = this.geometry.clampPosition(attacker.battleMapPosition, state.battleMap);
     const targetPosition = this.geometry.clampPosition(target.battleMapPosition, state.battleMap);
     return this.geometry.getDistanceFeet(state.battleMap, attackerPosition, targetPosition);
+  }
+
+  getAreaRangeState(state, attacker, targetCell, attack, defaultRangeFeet = 0) {
+    const rangeFeet = attack?.rangeFeet ?? defaultRangeFeet;
+
+    if (!attacker || !targetCell || !attack) {
+      return {
+        canAttack: false,
+        distanceFeet: null,
+        rangeFeet,
+        isRangeChecked: false,
+      };
+    }
+
+    if (attacker.type !== "monster") {
+      return {
+        canAttack: true,
+        distanceFeet: null,
+        rangeFeet,
+        isRangeChecked: false,
+      };
+    }
+
+    const attackerPosition = this.geometry.clampPosition(attacker.battleMapPosition, state.battleMap);
+    const targetPosition = this.geometry.clampPosition(targetCell, state.battleMap);
+    const distanceFeet = this.geometry.getDistanceFeet(state.battleMap, attackerPosition, targetPosition);
+
+    return {
+      canAttack: distanceFeet <= rangeFeet,
+      distanceFeet,
+      rangeFeet,
+      isRangeChecked: true,
+    };
+  }
+
+  getCombatantsInArea(state, targetCell, radiusFeet) {
+    return state.combatants.filter(
+      (combatant) =>
+        !combatant.isDefeated &&
+        this.geometry.isCellInArea(state.battleMap, combatant.battleMapPosition, targetCell, radiusFeet),
+    );
   }
 
   rollToHit(bonus) {

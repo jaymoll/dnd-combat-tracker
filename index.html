@@ -597,6 +597,14 @@
           <input id="spellNameInput" type="text" autocomplete="off" required />
         </label>
 
+        <label>
+          <span>Type</span>
+          <select id="spellTargetTypeInput">
+            <option value="attack">Attack</option>
+            <option value="area">Area</option>
+          </select>
+        </label>
+
         <label class="description-field">
           <span>Description</span>
           <textarea id="spellDescriptionInput" rows="3"></textarea>
@@ -605,6 +613,11 @@
         <label>
           <span>Range (ft)</span>
           <input id="spellRangeInput" type="number" min="0" step="5" required />
+        </label>
+
+        <label>
+          <span>Area Radius (ft)</span>
+          <input id="spellAreaRadiusInput" type="number" min="5" step="5" />
         </label>
 
         <label>

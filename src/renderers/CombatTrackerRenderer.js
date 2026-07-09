@@ -1,5 +1,5 @@
 import { getActiveCombatant, sortedCombatants } from "../combat.js";
-import { DEFAULT_SPELL_RANGE_FEET, DEFAULT_WEAPON_RANGE_FEET } from "../models.js";
+import { DEFAULT_SPELL_RANGE_FEET, DEFAULT_WEAPON_RANGE_FEET, isAreaSpell } from "../models.js";
 import {
   canRenderTurnPanel,
   combatantRowMarkup,
@@ -139,6 +139,7 @@ export class CombatTrackerRenderer {
     const hasSelectedTarget = Boolean(selectedTarget);
     const weapons = active.weapons ?? [];
     const spells = active.spells ?? [];
+    const hasAreaSpells = spells.some(isAreaSpell);
     const weaponStates = this.getAttackOptionStates(
       state,
       active,
@@ -146,12 +147,11 @@ export class CombatTrackerRenderer {
       weapons,
       DEFAULT_WEAPON_RANGE_FEET,
     );
-    const spellStates = this.getAttackOptionStates(
+    const spellStates = this.getSpellOptionStates(
       state,
       active,
       selectedTarget,
       spells,
-      DEFAULT_SPELL_RANGE_FEET,
     );
     const distanceText = this.getSelectedTargetDistanceText(state, active, selectedTarget);
 
@@ -159,14 +159,17 @@ export class CombatTrackerRenderer {
       activeName: active.name,
       selectedTargetText: selectedTarget
         ? `Target: ${selectedTarget.name}${distanceText}`
-        : "Target: select from list",
+        : hasAreaSpells
+          ? "Target: select a map tile for area spells"
+          : "Target: select from list",
       weaponOptions: weapons.map((weapon, index) => weaponOptionMarkup(weapon, index, weaponStates[index])).join(""),
       spellOptions: spells.map((spell, index) => spellOptionMarkup(spell, index, spellStates[index])).join(""),
       canUseTargetedAction: hasSelectedTarget,
+      canChooseSpell: hasSelectedTarget || hasAreaSpells,
       hasWeapons: weapons.length > 0,
       hasSpells: spells.length > 0,
       canRollAttack: hasSelectedTarget && weaponStates.some((rangeState) => !rangeState.disabled),
-      canCastSpell: hasSelectedTarget && spellStates.some((rangeState) => !rangeState.disabled),
+      canCastSpell: spellStates.some((rangeState) => !rangeState.disabled),
       canAdvanceTurn: targets.length > 0 || livingCombatants.length >= 2,
     };
   }
@@ -183,6 +186,30 @@ export class CombatTrackerRenderer {
       return {
         disabled: selectedTarget ? rangeState?.canAttack === false : false,
         rangeFeet: rangeState?.rangeFeet ?? attack.rangeFeet,
+      };
+    });
+  }
+
+  getSpellOptionStates(state, active, selectedTarget, spells) {
+    return spells.map((spell) => {
+      if (isAreaSpell(spell)) {
+        return {
+          disabled: false,
+          rangeFeet: spell.rangeFeet,
+        };
+      }
+
+      const rangeState = this.turnController?.getAttackRangeState(
+        state,
+        active,
+        selectedTarget,
+        spell,
+        DEFAULT_SPELL_RANGE_FEET,
+      );
+      return {
+        disabled: selectedTarget ? rangeState?.canAttack === false : true,
+        disabledReason: selectedTarget ? "out of range" : "select target",
+        rangeFeet: rangeState?.rangeFeet ?? spell.rangeFeet,
       };
     });
   }
@@ -207,7 +234,7 @@ export class CombatTrackerRenderer {
       panel.rollAttackButton.disabled = !panelState.canRollAttack;
       panel.weapon.disabled = !panelState.canUseTargetedAction || !panelState.hasWeapons;
       panel.castSpellButton.disabled = !panelState.canCastSpell;
-      panel.spell.disabled = !panelState.canUseTargetedAction || !panelState.hasSpells;
+      panel.spell.disabled = !panelState.canChooseSpell || !panelState.hasSpells;
       panel.nextTurnButton.disabled = !panelState.canAdvanceTurn;
     });
   }

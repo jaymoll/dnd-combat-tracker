@@ -1115,6 +1115,51 @@ textarea {
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
 
+.battle-map-board.is-area-targeting {
+  cursor: crosshair;
+}
+
+.battle-map-area-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.battle-map-area-cell {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255, 200, 87, 0.48);
+  background: rgba(255, 200, 87, 0.18);
+  box-shadow: inset 0 0 16px rgba(255, 200, 87, 0.16);
+}
+
+.hex-grid .battle-map-area-cell {
+  width: 52px;
+  height: 45px;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+
+.battle-map-area-shape {
+  position: absolute;
+  border: 2px solid rgba(255, 200, 87, 0.82);
+  border-radius: 50%;
+  background: rgba(255, 200, 87, 0.08);
+  transform: translate(-50%, -50%);
+}
+
+.battle-map-area-center {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.94);
+  border-radius: 50%;
+  background: rgba(255, 200, 87, 0.94);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 4px rgba(255, 200, 87, 0.22);
+}
+
 .battle-token {
   position: absolute;
   z-index: 3;

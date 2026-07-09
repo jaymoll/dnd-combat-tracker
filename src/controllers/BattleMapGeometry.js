@@ -64,6 +64,23 @@ export class BattleMapGeometry {
     };
   }
 
+  getPointForCell(map, position) {
+    const cell = this.getCellPosition(map, this.clampPosition(position, map));
+
+    return {
+      x: cell.centerX,
+      y: cell.centerY,
+    };
+  }
+
+  getAreaRadiusPixels(map, radiusFeet) {
+    return (Math.max(0, radiusFeet) / TILE_FEET) * this.getAreaTileSize(map);
+  }
+
+  isCellInArea(map, cellPosition, targetCell, radiusFeet) {
+    return this.getDistanceFeet(map, cellPosition, targetCell) <= radiusFeet;
+  }
+
   getDistanceFeet(map, from, to) {
     if (from.x === to.x && from.y === to.y) return 0;
 
@@ -105,5 +122,9 @@ export class BattleMapGeometry {
     const y = -x - z;
 
     return { x, y, z };
+  }
+
+  getAreaTileSize(map) {
+    return map.gridType === "hex" ? HEX_HEIGHT : SQUARE_TILE_SIZE;
   }
 }

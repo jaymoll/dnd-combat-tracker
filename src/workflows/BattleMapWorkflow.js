@@ -37,4 +37,8 @@ export class BattleMapWorkflow {
   startDrag(event) {
     this.battleMapController.startDrag(event, this.getState());
   }
+
+  previewAreaTarget(event) {
+    this.battleMapController.previewAreaTarget(event, this.getState());
+  }
 }

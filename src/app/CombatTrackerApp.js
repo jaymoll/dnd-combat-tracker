@@ -70,6 +70,8 @@ export class CombatTrackerApp {
       rosterController: this.rosterController,
       targetController: this.targetController,
       turnController: this.turnController,
+      battleMapController: this.battleMapController,
+      screenController: this.screenController,
       getState,
       setState: (state) => {
         this.state = state;

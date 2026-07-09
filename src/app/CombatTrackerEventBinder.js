@@ -44,6 +44,7 @@ export class CombatTrackerEventBinder {
     this.elements.battleMapHeight.addEventListener("change", () => this.battleMapWorkflow.resize());
     this.elements.battleMapZoom.addEventListener("input", () => this.battleMapWorkflow.zoom());
     this.elements.battleMapResetButton.addEventListener("click", () => this.battleMapWorkflow.resetPositions());
+    this.elements.battleMapBoard.addEventListener("pointermove", (event) => this.battleMapWorkflow.previewAreaTarget(event));
     this.elements.battleMapBoard.addEventListener("pointerdown", (event) => this.battleMapWorkflow.startDrag(event));
   }
 

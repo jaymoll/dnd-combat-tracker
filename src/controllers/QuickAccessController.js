@@ -3,6 +3,7 @@ import {
   createQuickAccessEntry,
   createSpellEntry,
   createWeaponEntry,
+  isAreaSpell,
   normalizeCreature,
   normalizeSpell,
   normalizeWeapon,
@@ -77,7 +78,7 @@ export class QuickAccessController {
 
   async saveLibraryChange(action, failureMessage = "Save failed") {
     try {
-      this.quickAccess = await action();
+      this.quickAccess = this.normalizeLibrary(await action());
       this.setStatus("Server storage connected");
       return true;
     } catch {
@@ -87,12 +88,19 @@ export class QuickAccessController {
   }
 
   normalizeLibrary(library) {
-    return Object.fromEntries(
-      ["character", "monster", "spell", "weapon"].map((type) => [
-        type,
-        (library[type] ?? []).map((entry) => this.normalizeEntry(entry, type)).filter(Boolean),
-      ]),
-    );
+    const spell = (library.spell ?? []).map((entry) => this.normalizeEntry(entry, "spell")).filter(Boolean);
+    const weapon = (library.weapon ?? []).map((entry) => this.normalizeEntry(entry, "weapon")).filter(Boolean);
+
+    return {
+      character: (library.character ?? [])
+        .map((entry) => this.normalizeCreatureEntry(this.enrichCreatureSpells(entry, spell), "character"))
+        .filter(Boolean),
+      monster: (library.monster ?? [])
+        .map((entry) => this.normalizeCreatureEntry(this.enrichCreatureSpells(entry, spell), "monster"))
+        .filter(Boolean),
+      spell,
+      weapon,
+    };
   }
 
   normalizeEntry(entry, type) {
@@ -100,6 +108,46 @@ export class QuickAccessController {
     if (type === "spell") return normalizeSpell(entry, idFactory);
     if (type === "weapon") return normalizeWeapon(entry, idFactory);
     return normalizeCreature(entry, type, idFactory);
+  }
+
+  normalizeCreatureEntry(entry, type) {
+    return normalizeCreature(entry, type, this.createQuickAccessId);
+  }
+
+  enrichCreatureSpells(entry, spellLibrary) {
+    const spells = Array.isArray(entry?.spells) ? entry.spells : [];
+    if (spells.length === 0) return entry;
+
+    return {
+      ...entry,
+      spells: spells.map((spell) => ({
+        ...(this.findMatchingLibrarySpell(spell, spellLibrary) ?? {}),
+        ...spell,
+        ...this.getLibraryAreaFields(spell, spellLibrary),
+      })),
+    };
+  }
+
+  findMatchingLibrarySpell(spell, spellLibrary) {
+    return spellLibrary.find((librarySpell) =>
+      librarySpell.name === spell.name &&
+      librarySpell.rangeFeet === spell.rangeFeet &&
+      librarySpell.damageMin === spell.damageMin &&
+      librarySpell.damageMax === spell.damageMax &&
+      librarySpell.damageBonus === spell.damageBonus,
+    ) ?? spellLibrary.find((librarySpell) => librarySpell.name === spell.name);
+  }
+
+  getLibraryAreaFields(spell, spellLibrary) {
+    if (spell.targetType || spell.areaRadiusFeet) return {};
+
+    const librarySpell = this.findMatchingLibrarySpell(spell, spellLibrary);
+    return isAreaSpell(librarySpell)
+      ? {
+          targetType: "area",
+          areaRadiusFeet: librarySpell.areaRadiusFeet,
+        }
+      : {};
   }
 
   createQuickAccessId(type) {

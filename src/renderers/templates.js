@@ -5,6 +5,7 @@ import {
   getCombatantSpeedFeet,
   getDamageText,
   getWeaponText,
+  isAreaSpell,
 } from "../models.js";
 import { escapeHtml } from "../utils.js";
 
@@ -62,14 +63,14 @@ export const weaponQuickAccessItemMarkup = (weapon, isDisabled) => `<article cla
   </div>
 </article>`;
 
-export const spellOptionMarkup = (spell, index, { disabled = false, rangeFeet = spell.rangeFeet } = {}) =>
-  `<option value="${index}" ${disabled ? "disabled" : ""}>${escapeHtml(getAttackOptionLabel(spell, disabled, rangeFeet))}</option>`;
+export const spellOptionMarkup = (spell, index, { disabled = false, rangeFeet = spell.rangeFeet, disabledReason } = {}) =>
+  `<option value="${index}" ${disabled ? "disabled" : ""}>${escapeHtml(getAttackOptionLabel(spell, disabled, rangeFeet, disabledReason))}</option>`;
 
 export const weaponOptionMarkup = (weapon, index, { disabled = false, rangeFeet = weapon.rangeFeet } = {}) =>
   `<option value="${index}" ${disabled ? "disabled" : ""}>${escapeHtml(getAttackOptionLabel(weapon, disabled, rangeFeet))}</option>`;
 
-const getAttackOptionLabel = (attack, disabled, rangeFeet) =>
-  `${attack.name} (${rangeFeet} ft${disabled ? ", out of range" : ""})`;
+const getAttackOptionLabel = (attack, disabled, rangeFeet, disabledReason = "out of range") =>
+  `${attack.name} (${rangeFeet} ft${isAreaSpell(attack) ? `, ${attack.areaRadiusFeet} ft area` : ""}${disabled ? `, ${disabledReason}` : ""})`;
 
 const conditionMenuMarkup = (combatant, state) => {
   if (!state.hasStarted || state.isFinished || combatant.isDefeated) return "";

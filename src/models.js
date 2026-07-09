@@ -110,6 +110,12 @@ export const DEFAULT_WEAPON_RANGE_FEET = 5;
 
 export const DEFAULT_SPELL_RANGE_FEET = 60;
 
+export const DEFAULT_SPELL_AREA_RADIUS_FEET = 10;
+
+export const SPELL_TARGET_TYPES = ["attack", "area"];
+
+export const isAreaSpell = (spell) => spell?.targetType === "area" || clampNumber(spell?.areaRadiusFeet ?? 0, 0) > 0;
+
 export const normalizeConditionValue = (condition) => {
   const value = String(condition?.value ?? condition ?? "").trim().toLowerCase();
   return conditionValues.has(value) ? value : "";
@@ -190,6 +196,14 @@ export const normalizeSpell = (entry, idFactory, index = 0) => {
   const description = String(entry.description ?? "").trim();
   const damage = normalizeDamageRange(entry);
   const rangeFeet = normalizeAttackRange(entry, DEFAULT_SPELL_RANGE_FEET);
+  const targetType = SPELL_TARGET_TYPES.includes(entry.targetType)
+    ? entry.targetType
+    : clampNumber(entry.areaRadiusFeet ?? entry.areaRadius ?? 0, 0) > 0
+      ? "area"
+      : "attack";
+  const areaRadiusFeet = targetType === "area"
+    ? clampNumber(entry.areaRadiusFeet ?? entry.areaRadius ?? DEFAULT_SPELL_AREA_RADIUS_FEET, TILE_FEET)
+    : 0;
 
   if (!name) return null;
 
@@ -197,7 +211,9 @@ export const normalizeSpell = (entry, idFactory, index = 0) => {
     id: String(entry.id || idFactory("spell", index)),
     name,
     description,
+    targetType,
     rangeFeet,
+    areaRadiusFeet,
     ...damage,
   };
 };
@@ -279,6 +295,8 @@ const createDamageEntry = (attack, defaultRangeFeet) => ({
 export const createSpellEntry = (spell) => ({
   name: spell.name,
   description: spell.description,
+  targetType: isAreaSpell(spell) ? "area" : "attack",
+  areaRadiusFeet: isAreaSpell(spell) ? clampNumber(spell.areaRadiusFeet, TILE_FEET) : 0,
   ...createDamageEntry(spell, DEFAULT_SPELL_RANGE_FEET),
 });
 
@@ -315,7 +333,8 @@ export const getMonsterStatBlockSummary = (monster) => {
 
 export const getDamageText = (attack) => {
   const bonus = attack.damageBonus === 0 ? "" : ` ${formatModifier(attack.damageBonus)}`;
-  return `${attack.damageMin}-${attack.damageMax}${bonus}, ${attack.rangeFeet} ft`;
+  const areaText = isAreaSpell(attack) ? `, ${attack.areaRadiusFeet} ft area` : "";
+  return `${attack.damageMin}-${attack.damageMax}${bonus}, ${attack.rangeFeet} ft${areaText}`;
 };
 
 export const getWeaponText = (weapon) =>

@@ -1,5 +1,6 @@
 import { LibraryAttackFormController } from "./LibraryAttackFormController.js";
-import { DEFAULT_SPELL_RANGE_FEET } from "../models.js";
+import { DEFAULT_SPELL_AREA_RADIUS_FEET, DEFAULT_SPELL_RANGE_FEET, SPELL_TARGET_TYPES } from "../models.js";
+import { clampNumber } from "../utils.js";
 
 export class SpellFormController extends LibraryAttackFormController {
   constructor(elements) {
@@ -25,5 +26,33 @@ export class SpellFormController extends LibraryAttackFormController {
         bonusInput: elements.spellDamageBonus,
       },
     });
+    this.targetTypeInput = elements.spellTargetType;
+    this.areaRadiusInput = elements.spellAreaRadius;
+    this.readExtra = () => this.readSpellTargeting();
+    this.resetExtra = () => this.resetSpellTargeting();
+    this.fillExtra = (spell) => this.fillSpellTargeting(spell);
+  }
+
+  readSpellTargeting() {
+    const targetType = SPELL_TARGET_TYPES.includes(this.targetTypeInput.value)
+      ? this.targetTypeInput.value
+      : "attack";
+
+    return {
+      targetType,
+      areaRadiusFeet: targetType === "area"
+        ? clampNumber(this.areaRadiusInput.value, 5)
+        : 0,
+    };
+  }
+
+  resetSpellTargeting() {
+    this.targetTypeInput.value = "attack";
+    this.areaRadiusInput.value = String(DEFAULT_SPELL_AREA_RADIUS_FEET);
+  }
+
+  fillSpellTargeting(spell) {
+    this.targetTypeInput.value = SPELL_TARGET_TYPES.includes(spell.targetType) ? spell.targetType : "attack";
+    this.areaRadiusInput.value = String(spell.areaRadiusFeet || DEFAULT_SPELL_AREA_RADIUS_FEET);
   }
 }

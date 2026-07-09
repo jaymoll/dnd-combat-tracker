@@ -1,5 +1,5 @@
 import { activeCombatantCanAct, getActiveCombatant, sortedCombatants } from "../combat.js";
-import { createInitialState } from "../models.js";
+import { createInitialState, isAreaSpell } from "../models.js";
 import { clampNumber } from "../utils.js";
 
 export class EncounterWorkflow {
@@ -9,6 +9,8 @@ export class EncounterWorkflow {
     rosterController,
     targetController,
     turnController,
+    battleMapController = null,
+    screenController = null,
     getState,
     setState,
     render,
@@ -18,6 +20,8 @@ export class EncounterWorkflow {
     this.rosterController = rosterController;
     this.targetController = targetController;
     this.turnController = turnController;
+    this.battleMapController = battleMapController;
+    this.screenController = screenController;
     this.getState = getState;
     this.setState = setState;
     this.render = render;
@@ -69,6 +73,17 @@ export class EncounterWorkflow {
   }
 
   castSpell(spellInput = this.elements.spell) {
+    if (!activeCombatantCanAct(this.getState())) return;
+
+    const active = getActiveCombatant(this.getState());
+    const spell = active?.spells?.[Number(spellInput.value)];
+    if (!spell) return;
+
+    if (isAreaSpell(spell)) {
+      this.castAreaSpell(spellInput.value, spell);
+      return;
+    }
+
     const targetId = this.getSelectedTargetIdForAction();
     if (!targetId) return;
 
@@ -78,6 +93,26 @@ export class EncounterWorkflow {
       spellInput.value,
     );
     if (result) this.finishAttack(result);
+  }
+
+  castAreaSpell(spellIndex, spell) {
+    if (!this.battleMapController) return;
+
+    const didStartTargeting = this.battleMapController.startAreaTargeting(
+      this.getState(),
+      spellIndex,
+      spell,
+      (targetCell) => {
+        const result = this.turnController.castAreaSpell(this.getState(), spellIndex, targetCell);
+        if (result) this.finishAttack(result);
+      },
+    );
+    if (!didStartTargeting) return;
+
+    this.targetController.clear();
+    this.screenController?.showScreen("battle-map");
+    this.setRollResult(`Select a point on the battle map for ${spell.name}.`);
+    this.render();
   }
 
   getSelectedTargetIdForAction() {
